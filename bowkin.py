@@ -36,6 +36,8 @@ def extract_buildID_from_file(libc_filepath):
 
 def update():
     subprocess.run('./get-ubuntu-libcs.sh')
+    subprocess.run('./get-debian-libcs.sh')
+    subprocess.run('./get-arch-libcs.sh')
 
     for libc_filepath in glob.glob('libcs/**/libc6_*.so', recursive=True):
         m = re.match(r'libcs/(?P<distro>.*?)/(?P<release>.*?)/(?P<libc_version>.*?).so', libc_filepath)
