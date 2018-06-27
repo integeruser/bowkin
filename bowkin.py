@@ -54,7 +54,7 @@ def update():
 ################################################################################
 
 
-def find(libc_filepath):
+def identify(libc_filepath):
     libc_buildID = extract_buildID_from_file(libc_filepath)
     if libc_buildID in libcs:
         print(libcs[libc_buildID])
@@ -66,15 +66,18 @@ def find(libc_filepath):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--libc', type=argparse.FileType())
-    parser.add_argument('--update', action='store_true')
+    subparsers = parser.add_subparsers(dest='action')
+    subparsers.required = True
+    update_parser = subparsers.add_parser('update')
+    identify_parser = subparsers.add_parser('identify')
+    identify_parser.add_argument('libc', type=argparse.FileType())
     args = parser.parse_args()
 
     db_filename = 'db.json'
 
     libcs = read_db()
 
-    if args.update:
+    if args.action == 'update':
         update()
-    if args.libc:
-        find(args.libc.name)
+    elif args.action == 'identify':
+        identify(args.libc.name)
