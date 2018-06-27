@@ -52,11 +52,12 @@ def build_db():
         if pathlib.Path(libc_filepath).stem.startswith('ld'):
             continue
 
-        m = re.match(r'libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?(?P<filename>.+?)$', libc_filepath)
+        m = re.match(r'libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?(?P<version>.+?).so', libc_filepath)
         libcs[extract_buildID_from_file(libc_filepath)].append({
             'distro': m.group('distro'),
             'release': m.group('release'),
-            'filename': m.group('filename')
+            'filepath': libc_filepath,
+            'version': m.group('version')
         })
 
     with open('libcs.json', 'w') as f:
