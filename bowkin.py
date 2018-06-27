@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import collections
 import glob
 import gzip
 import hashlib
@@ -24,6 +25,26 @@ def write_db():
         json.dump(libcs, f, sort_keys=True, indent=4)
 
 
+def rebuild_db():
+    global libcs
+    libcs = collections.defaultdict(list)
+    for libc_filepath in glob.glob('libcs/**/*libc*.so', recursive=True):
+        if pathlib.Path(libc_filepath).stem.startswith('ld'):
+            continue
+
+        m = re.match(r'libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?(?P<filename>.+?)$', libc_filepath)
+        libcs[extract_buildID_from_file(libc_filepath)].append({
+            'distro': m.group('distro'),
+            'release': m.group('release'),
+            'filename': m.group('filename')
+        })
+    write_db()
+
+
+def print_db():
+    print(json.dumps(libcs, sort_keys=True, indent=4))
+
+
 ################################################################################
 
 
@@ -34,21 +55,10 @@ def extract_buildID_from_file(libc_filepath):
     return buildID
 
 
-def update():
+def fetch():
     subprocess.run('./get-ubuntu-libcs.sh')
     subprocess.run('./get-debian-libcs.sh')
     subprocess.run('./get-arch-libcs.sh')
-
-    for libc_filepath in glob.glob('libcs/**/libc6_*.so', recursive=True):
-        m = re.match(r'libcs/(?P<distro>.*?)/(?P<release>.*?)/(?P<libc_version>.*?).so', libc_filepath)
-        libc_version = m.group('libc_version')
-        libc_buildID = extract_buildID_from_file(libc_filepath)
-        libc_distro = '{}/{}'.format(m.group('distro'), m.group('release'))
-        if libc_buildID not in libcs:
-            libcs[libc_buildID] = {'distros': [libc_distro], 'version': libc_version}
-        else:
-            if libc_distro not in libcs[libc_buildID]['distros']:
-                libcs[libc_buildID]['distros'].append(libc_distro)
 
 
 ################################################################################
@@ -56,10 +66,10 @@ def update():
 
 def identify(libc_filepath):
     libc_buildID = extract_buildID_from_file(libc_filepath)
-    if libc_buildID in libcs:
+    try:
         print(libcs[libc_buildID])
-    else:
-        print('Not in database.')
+    except:
+        pass
 
 
 ################################################################################
@@ -68,16 +78,25 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='action')
     subparsers.required = True
-    update_parser = subparsers.add_parser('update')
+
+    db_parser = subparsers.add_parser('db')
+    db_parser.add_argument('--rebuild', action='store_true')
+
+    _ = subparsers.add_parser('fetch')
+
     identify_parser = subparsers.add_parser('identify')
     identify_parser.add_argument('libc', type=argparse.FileType())
+
     args = parser.parse_args()
 
-    db_filename = 'db.json'
-
+    db_filename = 'libcs.json'
     libcs = read_db()
 
-    if args.action == 'update':
-        update()
+    if args.action == 'db':
+        if args.rebuild:
+            rebuild_db()
+        print_db()
+    elif args.action == 'fetch':
+        fetch()
     elif args.action == 'identify':
         identify(args.libc.name)
