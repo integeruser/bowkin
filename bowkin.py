@@ -5,15 +5,15 @@ import glob
 import gzip
 import hashlib
 import json
+import os
 import pathlib
+import pprint
 import re
+import shutil
 import subprocess
 import tempfile
-import urllib.request
-import shutil
 import textwrap
-import pprint
-import os
+import urllib.request
 
 
 def show():
@@ -89,7 +89,7 @@ def create_specific_image(libcs_entry, base_image_name, specific_image_name):
         libc_path = libcs_entry['filepath']
         libc_basename = os.path.basename(libc_path)
         ld_path = f'{os.path.dirname(libc_path)}/ld-{libc_basename}'
-        
+
         with tempfile.TemporaryDirectory() as tempdir:
             print(tempdir / pathlib.Path('Dockerfile'))
             with open(tempdir / pathlib.Path('Dockerfile'), 'wb') as f:
@@ -120,6 +120,7 @@ def run_container(container_name, share):
     else:
         subprocess.run(f'docker run --name {container_name} -it {container_name}', shell=True)
 
+
 def show_matches(libcs_matches):
     print('Possible entry:')
     for index, entry in enumerate(libcs_matches):
@@ -127,14 +128,15 @@ def show_matches(libcs_matches):
         pprint.pprint(entry)
     print('Exit with -1')
 
+
 def get_entry(libcs_matches):
     if len(libcs_matches) == 1:
         return libcs_matches[0]
 
-    while True: # until input is not valid or user want to exit
+    while True:  # until input is not valid or user want to exit
         show_matches(libcs_matches)
         string_choice = input('Chose one entry: ')
-        
+
         try:
             choice = int(string_choice)
             if choice == -1:
@@ -145,27 +147,29 @@ def get_entry(libcs_matches):
             print("Not valid")
             continue
 
+
 def clean(base_image_name, distro_name, libc_basename, container_name):
     image_name = container_name
 
-    try:# remove container
+    try:  # remove container
         subprocess.check_output(f'docker container inspect {container_name}', shell=True)
         subprocess.check_output(f'docker stop {container_name} && docker rm {container_name}', shell=True)
         print(f'Container {container_name} has been removed')
     except subprocess.CalledProcessError:
         print(f'''
-        The container related with the libc {libc_basename} of the 
+        The container related with the libc {libc_basename} of the
         distro {distro_name} using the base image {base_image_name} not exist
         ''')
-    try: # try remove image
+    try:  # try remove image
         subprocess.check_output(f'docker image inspect {image_name}', shell=True)
         subprocess.check_output(f'docker rmi {image_name}', shell=True)
         print(f'Image {image_name} has been removed')
     except:
         print(f'''
-        The image related with the libc {libc_basename} of the 
+        The image related with the libc {libc_basename} of the
         distro {distro_name} using the base image {base_image_name} not exist
         ''')
+
 
 def pwnerize(args):
     libcs_matches = identify(args.libc.name, show_matches=False)
@@ -173,7 +177,7 @@ def pwnerize(args):
         print('No match found')
         exit(1)
     libcs_entry = get_entry(libcs_matches)
-    
+
     distro_name = libcs_entry["distro"]
     libc_basename = pathlib.Path(libcs_entry["filepath"]).stem
 
@@ -190,8 +194,8 @@ def pwnerize(args):
     elif args.pwnerize_action == 'clean':
         clean(base_image_name, distro_name, libc_basename, container_name)
 
-################################################################################
 
+################################################################################
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -216,17 +220,17 @@ if __name__ == '__main__':
     # common argument of the sub_parser of pwnerize
     pwnerize_stop.add_argument('base', type=argparse.FileType())
     pwnerize_run.add_argument('base', type=argparse.FileType())
-    
+
     pwnerize_stop.add_argument('libc', type=argparse.FileType())
     pwnerize_run.add_argument('libc', type=argparse.FileType())
-    
+
     # pwnerize_run specific argument
     pwnerize_run.add_argument('--share')
 
     args = parser.parse_args()
 
     libcs = build_db()
-    
+
     if args.action == 'show':
         show()
     elif args.action == 'fetch':
