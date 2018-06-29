@@ -127,9 +127,11 @@ def run_container(container_name, share):
 
     if share:
         subprocess.run(
-            f'docker run --name {container_name} --volume {share}:/home/share -it {container_name}', shell=True)
+            f'docker run --privileged --cap-add=SYS_PTRACE --name {container_name} --volume {share}:/home/share -it {container_name}',
+            shell=True)
     else:
-        subprocess.run(f'docker run --name {container_name} -it {container_name}', shell=True)
+        subprocess.run(
+            f'docker run --privileged --cap-add=SYS_PTRACE --name {container_name} -it {container_name}', shell=True)
 
 
 def show_matches(libcs_matches):
