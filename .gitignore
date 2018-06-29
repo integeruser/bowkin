@@ -1,2 +1,6 @@
 libcs/
 libcs.json
+
+venv/
+
+\.vscode/
