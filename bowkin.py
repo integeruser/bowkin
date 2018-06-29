@@ -164,23 +164,30 @@ def clean(base_image_name, distro_name, libc_basename, container_name):
     image_name = container_name
 
     try:  # remove container
-        subprocess.check_output(f'docker container inspect {container_name}', shell=True)
+        subprocess.run(
+            f'docker container inspect {container_name}',
+            shell=True,
+            check=True,
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL)
         subprocess.check_output(f'docker stop {container_name} && docker rm {container_name}', shell=True)
         print(f'Container {container_name} has been removed')
     except subprocess.CalledProcessError:
-        print(f'''
-        The container related with the libc {libc_basename} of the
-        distro {distro_name} using the base image {base_image_name} not exist
-        ''')
+        print(' '.join((f'The container related with the libc {libc_basename} of the',
+                        f'distro {distro_name} using the base image {base_image_name} not exist')))
+
     try:  # try remove image
-        subprocess.check_output(f'docker image inspect {image_name}', shell=True)
+        subprocess.run(
+            f'docker image inspect {image_name}',
+            shell=True,
+            check=True,
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL)
         subprocess.check_output(f'docker rmi {image_name}', shell=True)
         print(f'Image {image_name} has been removed')
     except:
-        print(f'''
-        The image related with the libc {libc_basename} of the
-        distro {distro_name} using the base image {base_image_name} not exist
-        ''')
+        print(' '.join((f'The image related with the libc {libc_basename} of the distro',
+                        f'{distro_name} using the base image {base_image_name} not exist')))
 
 
 def pwnerize(args):
@@ -234,6 +241,7 @@ def find(symbols_map):
                 else:
                     results.append(libc_entries)
     print(json.dumps(results, sort_keys=True, indent=4))
+
 
 # arrive one string spliting the args with space
 def symbol_entry(entry):
