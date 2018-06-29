@@ -99,16 +99,15 @@ def create_specific_image(libcs_entry, base_image_name, specific_image_name):
         subprocess.check_output(f'docker inspect {specific_image_name}', shell=True)
     except subprocess.CalledProcessError:
         libc_path = libcs_entry['filepath']
-        libc_basename = os.path.basename(libc_path)
+        libc_basename = os.path.basename(libc_path).replace('libc-', '')
         ld_path = f'{os.path.dirname(libc_path)}/ld-{libc_basename}'
 
         with tempfile.TemporaryDirectory() as tempdir:
-            print(tempdir / pathlib.Path('Dockerfile'))
             with open(tempdir / pathlib.Path('Dockerfile'), 'wb') as f:
                 f.write(
                     textwrap.dedent(f'''\
                         FROM {base_image_name}:latest
-                        ADD {libc_basename} /library/{libc_basename}
+                        ADD libc-{libc_basename} /library/libc-{libc_basename}
                         COPY ld-{libc_basename} /library/ld-{libc_basename}
                         WORKDIR /home''').encode('ascii'))
                 shutil.copy(libc_path, tempdir)
@@ -235,10 +234,9 @@ def find(symbols_map):
                     results.append(libc_entries)
     print(json.dumps(results, sort_keys=True, indent=4))
 
-
 # arrive one string spliting the args with space
 def symbol_entry(entry):
-    symbol_name, addr_str = entry.split(',')
+    symbol_name, addr_str = entry.split('=')
     addr = int(addr_str, 16) & int('1' * 12, 2)  # we take only the last 12 bits
     return {symbol_name: addr}
 
@@ -276,7 +274,7 @@ if __name__ == '__main__':
     pwnerize_run.add_argument('--share')
 
     # find arguments
-    find_parser.add_argument('symbols', type=symbol_entry, nargs='+', metavar='SYMBOL,OFFSET')
+    find_parser.add_argument('symbols', type=symbol_entry, nargs='+', metavar='SYMBOL=OFFSET')
 
     args = parser.parse_args()
 
