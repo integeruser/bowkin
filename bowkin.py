@@ -17,12 +17,6 @@ import textwrap
 import urllib.request
 import elftools.elf.elffile as elffile
 
-def show():
-    print(json.dumps(libcs, sort_keys=True, indent=4))
-
-
-################################################################################
-
 
 def fetch():
     subprocess.run('./get-ubuntu-libcs.sh')
@@ -213,16 +207,16 @@ def pwnerize(args):
         clean(base_image_name, distro_name, libc_basename, container_name)
 
 
-################################################################################ 
+################################################################################
 
 
 # check only the last 12 bits of the offset
-def find(symbols_map): 
-    results = [] 
-    # symbols_libc = {key:int(value) for key, value in (entry.split(' ') for entry in command_result.split('\n')) } 
-     
+def find(symbols_map):
+    results = []
+    # symbols_libc = {key:int(value) for key, value in (entry.split(' ') for entry in command_result.split('\n')) }
+
     for _, libc_entries in libcs.items():  # for each hash get the list of libcs
-        for libc_entry in libc_entries: 
+        for libc_entry in libc_entries:
             libc_path = f'./{libc_entry["filepath"]}'
 
             with open(libc_path, 'rb') as libc_file:
@@ -240,14 +234,14 @@ def find(symbols_map):
                 else:
                     results.append(libc_entries)
     print(json.dumps(results, sort_keys=True, indent=4))
- 
 
-# arrive one string spliting the args with space 
-def symbol_entry(entry): 
-    symbol_name, addr_str = entry.split(',') 
+
+# arrive one string spliting the args with space
+def symbol_entry(entry):
+    symbol_name, addr_str = entry.split(',')
     addr = int(addr_str, 16) & int('1' * 12, 2)  # we take only the last 12 bits
-    return {symbol_name: addr} 
- 
+    return {symbol_name: addr}
+
 
 ################################################################################
 
@@ -257,11 +251,10 @@ if __name__ == '__main__':
     subparsers.required = True
 
     # action
-    _ = subparsers.add_parser('show')
     _ = subparsers.add_parser('fetch')
     identify_parser = subparsers.add_parser('identify')
     pwnerize_sub_parser = subparsers.add_parser('pwnerize')
-    find_parser = subparsers.add_parser('find') 
+    find_parser = subparsers.add_parser('find')
 
     # argument identify
     identify_parser.add_argument('libc', type=argparse.FileType())
@@ -290,9 +283,7 @@ if __name__ == '__main__':
     libcs = parse_libcs()
     create_db(libcs)
 
-    if args.action == 'show':
-        show()
-    elif args.action == 'fetch':
+    if args.action == 'fetch':
         fetch()
     elif args.action == 'identify':
         identify(args.libc.name)
