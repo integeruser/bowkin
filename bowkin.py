@@ -54,15 +54,17 @@ def extract_buildID_from_file(libc_filepath):
 
 def build_db():
     libcs = collections.defaultdict(list)
-    for libc_filepath in glob.glob('libcs/**/*libc*.so', recursive=True):
-        if pathlib.Path(libc_filepath).stem.startswith('ld'):
-            continue
+    for filepath in glob.glob('libcs/**/libc*.so', recursive=True):
+        m = re.match(
+            r'libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64)-(?P<version>.+?).so',
+            filepath)
 
-        m = re.match(r'libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?(?P<version>.+?).so', libc_filepath)
-        libcs[extract_buildID_from_file(libc_filepath)].append({
+        buildID = extract_buildID_from_file(filepath)
+        libcs[buildID].append({
             'distro': m.group('distro'),
+            'architecture': m.group('architecture'),
             'release': m.group('release'),
-            'filepath': libc_filepath,
+            'filepath': filepath,
             'version': m.group('version')
         })
 
