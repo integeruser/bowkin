@@ -10,6 +10,7 @@ import pathlib
 import pprint
 import re
 import shutil
+import sqlite3
 import subprocess
 import tempfile
 import textwrap
@@ -52,7 +53,25 @@ def extract_buildID_from_file(libc_filepath):
     return buildID
 
 
-def build_db():
+def init_db():
+    with sqlite3.connect('libcs.db') as conn:
+        conn.execute('CREATE TABLE IF NOT EXISTS libcs'
+                     '(architecture text, distro text, release text, version text, buildID text, filepath text)')
+        conn.execute('DELETE FROM libcs')
+
+
+def create_db(libcs):
+    init_db()
+
+    with sqlite3.connect('libcs.db') as conn:
+        for buildID in libcs:
+            for libc in libcs[buildID]:
+                conn.execute(
+                    'INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)',
+                    (libc['architecture'], libc['distro'], libc['release'], libc['version'], buildID, libc['filepath']))
+
+
+def parse_libcs():
     libcs = collections.defaultdict(list)
     for filepath in glob.glob('libcs/**/libc*.so', recursive=True):
         m = re.match(
@@ -67,9 +86,6 @@ def build_db():
             'filepath': filepath,
             'version': m.group('version')
         })
-
-    with open('libcs.json', 'w') as f:
-        json.dump(libcs, f, sort_keys=True, indent=4)
 
     return libcs
 
@@ -196,14 +212,16 @@ def pwnerize(args):
     elif args.pwnerize_action == 'clean':
         clean(base_image_name, distro_name, libc_basename, container_name)
 
+
 ################################################################################ 
+
 
 # check only the last 12 bits of the offset
 def find(symbols_map): 
     results = [] 
     # symbols_libc = {key:int(value) for key, value in (entry.split(' ') for entry in command_result.split('\n')) } 
      
-    for _, libc_entries in libcs.items(): # for each hash get the list of libcs 
+    for _, libc_entries in libcs.items():  # for each hash get the list of libcs
         for libc_entry in libc_entries: 
             libc_path = f'./{libc_entry["filepath"]}'
 
@@ -214,7 +232,7 @@ def find(symbols_map):
                 for sym_name, sym_value in symbols_map.items():
                     try:
                         libc_sym = dynsym_section.get_symbol_by_name(sym_name)[0]
-                        libc_sym_value = libc_sym.entry.st_value & int('1'*12, 2)
+                        libc_sym_value = libc_sym.entry.st_value & int('1' * 12, 2)
                         if libc_sym_value != sym_value:
                             break
                     except TypeError | IndexError:
@@ -223,14 +241,15 @@ def find(symbols_map):
                     results.append(libc_entries)
     print(json.dumps(results, sort_keys=True, indent=4))
  
+
 # arrive one string spliting the args with space 
 def symbol_entry(entry): 
     symbol_name, addr_str = entry.split(',') 
-    addr = int(addr_str, 16) & int('1'*12, 2) # we take only the last 12 bits 
+    addr = int(addr_str, 16) & int('1' * 12, 2)  # we take only the last 12 bits
     return {symbol_name: addr} 
  
-################################################################################
 
+################################################################################
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -268,7 +287,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    libcs = build_db()
+    libcs = parse_libcs()
+    create_db(libcs)
 
     if args.action == 'show':
         show()
