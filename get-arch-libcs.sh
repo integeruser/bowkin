@@ -2,27 +2,34 @@
 set -e
 cd "$(dirname "$0")"
 
-mkdir -p "libcs/arch/pkgs"
-cd "libcs/arch/pkgs"
+WORKDIR="$(pwd)/libcs/arch"
+mkdir -p "$WORKDIR"
+cd "$WORKDIR"
+
+PKG_URLS=""
 for ARCH in "i686" "x86_64"; do
-    wget "https://archive.archlinux.org/packages/g/glibc/" --no-clobber --no-directories --no-parent --recursive --level=1 --execute="robots=off" \
-        --accept "glibc-*-$ARCH.pkg.tar.xz" \
-        --reject "*.sig"
+    PKG_URLS="$PKG_URLS $(wget "https://archive.archlinux.org/packages/g/glibc/" 2>&1 \
+        --spider --no-clobber --no-directories --no-parent --recursive --level=1 --execute="robots=off" \
+        --accept "glibc-*-$ARCH.pkg.tar.xz" --reject "*.sig" \
+        | grep -Eo http.+\.pkg\.tar\.xz)"
 done
+set -- junk $PKG_URLS
 
-cd "../" && WORKDIR="$(pwd)"
-for PKG_FILENAME in pkgs/*.pkg.tar.xz; do
-    echo "Processing $PKG_FILENAME..."
-
+for PKG_URL in $PKG_URLS; do
+    PKG_FILENAME="$(basename "$PKG_URL")"
     if [[ $PKG_FILENAME =~ glibc-(.*)-$ARCH.pkg.tar.xz ]]; then
         VERS="${BASH_REMATCH[1]}"
 
         LIBC_FILENAME="libc-$ARCH-$VERS.so"
         LD_FILENAME="ld-$ARCH-$VERS.so"
         if [[ ( ! -f $LIBC_FILENAME ) || ( ! -f $LD_FILENAME ) ]]; then
+            echo "Fetching: "$PKG_FILENAME""
+
             pushd . >/dev/null 2>&1
-            cd "$(mktemp -d)" && TEMPDIR="$(pwd)"
-                if tar xf "$WORKDIR/$PKG_FILENAME"; then
+            TEMPDIR="$(mktemp -d)"
+            cd "$TEMPDIR"
+                wget "$PKG_URL" 2>/dev/null
+                if tar xf "$PKG_FILENAME"; then
                     mv "$(realpath $(find "$TEMPDIR" -name "libc.so.6"))" "$WORKDIR/$LIBC_FILENAME"
                     mv "$(realpath $(find "$TEMPDIR" -name "ld-*.so"))" "$WORKDIR/$LD_FILENAME"
                 fi
