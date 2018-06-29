@@ -106,10 +106,10 @@ def create_specific_image(libcs_entry, base_image_name, specific_image_name):
         with tempfile.TemporaryDirectory() as tempdir:
             with open(tempdir / pathlib.Path('Dockerfile'), 'wb') as f:
                 f.write((
-                    f'FROM {base_image_name}:latest'
-                    f'ADD libc-{libc_basename} /library/libc-{libc_basename}'
-                    f'COPY ld-{libc_basename} /library/ld-{libc_basename}'
-                    f'RUN sed -i "s|gdbserver_args += \\[\'localhost:0\'\\]|gdbserver_args += \\[\'--wrapper\', \'env LD_PRELOAD=\\"/library/ld-{libc_basename} /library/libc-{libc_basename}\\"\', \'--\', \'localhost:0\'\\]|" /usr/local/lib/python2.7/dist-packages/pwnlib/gdb.py'
+                    f'FROM {base_image_name}:latest\n'
+                    f'ADD libc-{libc_basename} /library/libc-{libc_basename}\n'
+                    f'COPY ld-{libc_basename} /library/ld-{libc_basename}\n'
+                    f'RUN sed -i "s|gdbserver_args += \\[\'localhost:0\'\\]|gdbserver_args += \\[\'--wrapper\', \'env LD_PRELOAD=\\"/library/ld-{libc_basename} /library/libc-{libc_basename}\\"\', \'--\', \'localhost:0\'\\]|" /usr/local/lib/python2.7/dist-packages/pwnlib/gdb.py\n'
                     f'WORKDIR /home').encode('ascii'))
                 shutil.copy(libc_path, tempdir)
                 shutil.copy(ld_path, tempdir)
