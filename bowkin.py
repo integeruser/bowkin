@@ -244,7 +244,7 @@ def find(symbols_map):
 
 # arrive one string spliting the args with space 
 def symbol_entry(entry): 
-    symbol_name, addr_str = entry.split(',') 
+    symbol_name, addr_str = entry.split('=') 
     addr = int(addr_str, 16) & int('1' * 12, 2)  # we take only the last 12 bits
     return {symbol_name: addr} 
  
@@ -283,7 +283,7 @@ if __name__ == '__main__':
     pwnerize_run.add_argument('--share')
 
     # find arguments
-    find_parser.add_argument('symbols', type=symbol_entry, nargs='+', metavar='SYMBOL,OFFSET')
+    find_parser.add_argument('symbols', type=symbol_entry, nargs='+', metavar='SYMBOL=OFFSET')
 
     args = parser.parse_args()
 
