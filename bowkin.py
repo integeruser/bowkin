@@ -14,6 +14,7 @@ import sqlite3
 import subprocess
 import tempfile
 import urllib.request
+
 import elftools.elf.elffile as elffile
 
 
