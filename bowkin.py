@@ -105,16 +105,15 @@ def create_specific_image(libcs_entry, base_image_name, specific_image_name):
         subprocess.check_output(f'docker inspect {specific_image_name}', shell=True)
     except subprocess.CalledProcessError:
         libc_path = libcs_entry['filepath']
-        libc_basename = os.path.basename(libc_path)
+        libc_basename = os.path.basename(libc_path).replace('libc-', '')
         ld_path = f'{os.path.dirname(libc_path)}/ld-{libc_basename}'
-
+        
         with tempfile.TemporaryDirectory() as tempdir:
-            print(tempdir / pathlib.Path('Dockerfile'))
             with open(tempdir / pathlib.Path('Dockerfile'), 'wb') as f:
                 f.write(
                     textwrap.dedent(f'''\
                         FROM {base_image_name}:latest
-                        ADD {libc_basename} /library/{libc_basename}
+                        ADD libc-{libc_basename} /library/libc-{libc_basename}
                         COPY ld-{libc_basename} /library/ld-{libc_basename}
                         WORKDIR /home''').encode('ascii'))
                 shutil.copy(libc_path, tempdir)
