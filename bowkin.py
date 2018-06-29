@@ -173,8 +173,8 @@ def clean(base_image_name, distro_name, libc_basename, container_name):
         subprocess.check_output(f'docker stop {container_name} && docker rm {container_name}', shell=True)
         print(f'Container {container_name} has been removed')
     except subprocess.CalledProcessError:
-        print(' '.join((f'The container related with the libc {libc_basename} of the',
-                        f'distro {distro_name} using the base image {base_image_name} not exist')))
+        print((f'The container related with the libc {libc_basename} of the'
+               f'distro {distro_name} using the base image {base_image_name} not exist'))
 
     try:  # try remove image
         subprocess.run(
@@ -186,8 +186,8 @@ def clean(base_image_name, distro_name, libc_basename, container_name):
         subprocess.check_output(f'docker rmi {image_name}', shell=True)
         print(f'Image {image_name} has been removed')
     except:
-        print(' '.join((f'The image related with the libc {libc_basename} of the distro',
-                        f'{distro_name} using the base image {base_image_name} not exist')))
+        print((f'The image related with the libc {libc_basename} of the distro'
+               f'{distro_name} using the base image {base_image_name} not exist'))
 
 
 def pwnerize(args):
