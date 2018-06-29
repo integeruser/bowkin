@@ -14,7 +14,7 @@ import subprocess
 import tempfile
 import textwrap
 import urllib.request
-
+import elftools.elf.elffile as elffile
 
 def show():
     print(json.dumps(libcs, sort_keys=True, indent=4))
@@ -194,8 +194,41 @@ def pwnerize(args):
     elif args.pwnerize_action == 'clean':
         clean(base_image_name, distro_name, libc_basename, container_name)
 
+################################################################################ 
 
+# check only the last 12 bits of the offset
+def find(symbols_map): 
+    results = [] 
+    # symbols_libc = {key:int(value) for key, value in (entry.split(' ') for entry in command_result.split('\n')) } 
+     
+    for _, libc_entries in libcs.items(): # for each hash get the list of libcs 
+        for libc_entry in libc_entries: 
+            libc_path = f'./{libc_entry["filepath"]}'
+
+            with open(libc_path, 'rb') as libc_file:
+                elf = elffile.ELFFile(libc_file)
+                dynsym_section = elf.get_section_by_name('.dynsym')
+
+                for sym_name, sym_value in symbols_map.items():
+                    try:
+                        libc_sym = dynsym_section.get_symbol_by_name(sym_name)[0]
+                        libc_sym_value = libc_sym.entry.st_value & int('1'*12, 2)
+                        if libc_sym_value != sym_value:
+                            break
+                    except TypeError | IndexError:
+                        break
+                else:
+                    results.append(libc_entries)
+    print(json.dumps(results, sort_keys=True, indent=4))
+ 
+# arrive one string spliting the args with space 
+def symbol_entry(entry): 
+    symbol_name, addr_str = entry.split(',') 
+    addr = int(addr_str, 16) & int('1'*12, 2) # we take only the last 12 bits 
+    return {symbol_name: addr} 
+ 
 ################################################################################
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -207,6 +240,7 @@ if __name__ == '__main__':
     _ = subparsers.add_parser('fetch')
     identify_parser = subparsers.add_parser('identify')
     pwnerize_sub_parser = subparsers.add_parser('pwnerize')
+    find_parser = subparsers.add_parser('find') 
 
     # argument identify
     identify_parser.add_argument('libc', type=argparse.FileType())
@@ -217,7 +251,7 @@ if __name__ == '__main__':
     pwnerize_run = pwnerize_sub_parser.add_parser('run')
     pwnerize_sub_parser.required = True
 
-    # common argument of the sub_parser of pwnerize
+    # common arguments of the sub_parser of pwnerize
     pwnerize_stop.add_argument('base', type=argparse.FileType())
     pwnerize_run.add_argument('base', type=argparse.FileType())
 
@@ -226,6 +260,9 @@ if __name__ == '__main__':
 
     # pwnerize_run specific argument
     pwnerize_run.add_argument('--share')
+
+    # find arguments
+    find_parser.add_argument('symbols', type=symbol_entry, nargs='+', metavar='SYMBOL,OFFSET')
 
     args = parser.parse_args()
 
@@ -239,3 +276,6 @@ if __name__ == '__main__':
         identify(args.libc.name)
     elif args.action == 'pwnerize':
         pwnerize(args)
+    elif args.action == 'find':
+        symbols_map = dict(collections.ChainMap(*args.symbols))
+        find(symbols_map)
