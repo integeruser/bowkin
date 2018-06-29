@@ -2,33 +2,45 @@
 set -e
 cd "$(dirname "$0")"
 
-mkdir -p libcs/ubuntu/
-cd libcs/ubuntu/
+mkdir -p "libcs/ubuntu"
+cd "libcs/ubuntu"
 
-for distro in "trusty" "xenial" "artful" "bionic"; do
+for DISTRO in "trusty" "xenial" "artful" "bionic"; do
     pushd . >/dev/null 2>&1
-    mkdir -p $distro
-    cd $distro
-        WORKDIR=$(pwd)
+    mkdir -p "$DISTRO"
+    cd "$DISTRO"
 
-        LIBC_URL=$(wget -O - "https://packages.ubuntu.com/$distro/amd64/libc6/download" 2>/dev/null | grep -o -m 1 "http://[^\"]*libc6[^\"]*.deb")
-        LIBC_DEB_NAME=$(basename $LIBC_URL)
-        LIBC_VERS=$(basename $LIBC_URL .deb)
-        LIBC_FILENAME="$LIBC_VERS.so"
-        LIBC_LD_FILENAME="ld-$LIBC_VERS.so"
-        if [[ ! -f $LIBC_FILENAME ]]; then
-            wget --tries 1 $LIBC_URL
+        mkdir -p "pkgs"
+        cd "pkgs"
+        for ARCH in "i386" "amd64"; do
+            DEB_URL="$(wget -O - "https://packages.ubuntu.com/$DISTRO/$ARCH/libc6/download" 2>/dev/null | grep -o -m 1 "http://[^\"]*libc6[^\"]*.deb")"
+            DEB_FILENAME="$(basename "$DEB_URL")"
+            if [[ ! -f "$DEB_FILENAME" ]]; then
+                wget --tries 1 "$DEB_URL"
+            fi
+        done
 
-            pushd . >/dev/null 2>&1
-            cd $(mktemp -d)
-                TEMPDIR=$(pwd)
-                ar x $WORKDIR/$LIBC_DEB_NAME
-                tar xf data.tar.?z
-                mv $(realpath $(find $TEMPDIR -name "libc.so.6")) "$WORKDIR/$LIBC_FILENAME"
-                mv $(realpath $(find $TEMPDIR -name "ld-*.so")) "$WORKDIR/$LIBC_LD_FILENAME"
-            popd >/dev/null 2>&1
+        cd "../" && WORKDIR="$(pwd)"
+        for ARCH in "i386" "amd64"; do
+            for DEB_FILENAME in pkgs/*.deb; do
+                echo "Processing $DEB_FILENAME..."
 
-            rm -f $LIBC_DEB_NAME*
-        fi
+                if [[ $DEB_FILENAME =~ libc6_(.*)_$ARCH.deb ]]; then
+                    VERS="${BASH_REMATCH[1]}"
+
+                    LIBC_FILENAME="libc-$ARCH-$VERS.so"
+                    LD_FILENAME="ld-$ARCH-$VERS.so"
+                    if [[ ( ! -f $LIBC_FILENAME ) || ( ! -f $LD_FILENAME ) ]]; then
+                        pushd . >/dev/null 2>&1
+                        cd "$(mktemp -d)" && TEMPDIR="$(pwd)"
+                            if ar x "$WORKDIR/$DEB_FILENAME" && tar xf data.tar.?z; then
+                                mv "$(realpath $(find "$TEMPDIR" -name "libc.so.6"))" "$WORKDIR/$LIBC_FILENAME"
+                                mv "$(realpath $(find "$TEMPDIR" -name "ld-*.so"))" "$WORKDIR/$LD_FILENAME"
+                            fi
+                        popd >/dev/null 2>&1
+                    fi
+                fi
+            done
+        done
     popd >/dev/null 2>&1
 done
