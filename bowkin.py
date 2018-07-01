@@ -133,7 +133,7 @@ def find(symbols):
                         libc_address = libc_sym.entry.st_value & 0b111111111111
                         if libc_address != address:
                             break
-                    except TypeError | IndexError:
+                    except (TypeError, IndexError):
                         break
                 else:
                     results.append(libc_entries)
