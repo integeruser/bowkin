@@ -104,7 +104,7 @@ if __name__ == '__main__':
     distro_name = libcs_entry["distro"]
     libc_basename = pathlib.Path(libcs_entry["filepath"]).stem
 
-    base_image_name = f'pwnerize-{pathlib.Path(args.base.name).stem}'
+    base_image_name = f'bowkin-{pathlib.Path(args.base.name).stem}'
     base_and_distro_name = f'{base_image_name}-{distro_name}'
     specific_image_name = f'{base_and_distro_name}-{libc_basename}'
     container_name = specific_image_name
