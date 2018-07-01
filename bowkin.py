@@ -110,10 +110,14 @@ def get_entry(libcs_matches):
 ################################################################################
 
 
-# check only the last 12 bits of the offset
-def find(symbols_map):
+def symbol_address_pair(string):
+    symbol, address = string.split('=')
+    offset = int(address, 16) & 0b111111111111
+    return (symbol, offset)
+
+
+def find(symbols):
     results = []
-    # symbols_libc = {key:int(value) for key, value in (entry.split(' ') for entry in command_result.split('\n')) }
 
     for _, libc_entries in libcs.items():  # for each hash get the list of libcs
         for libc_entry in libc_entries:
@@ -123,24 +127,17 @@ def find(symbols_map):
                 elf = elftools.elf.elffile.ELFFile(libc_file)
                 dynsym_section = elf.get_section_by_name('.dynsym')
 
-                for sym_name, sym_value in symbols_map.items():
+                for symbol, address in symbols:
                     try:
-                        libc_sym = dynsym_section.get_symbol_by_name(sym_name)[0]
-                        libc_sym_value = libc_sym.entry.st_value & int('1' * 12, 2)
-                        if libc_sym_value != sym_value:
+                        libc_sym = dynsym_section.get_symbol_by_name(symbol)[0]
+                        libc_address = libc_sym.entry.st_value & 0b111111111111
+                        if libc_address != address:
                             break
                     except TypeError | IndexError:
                         break
                 else:
                     results.append(libc_entries)
     print(json.dumps(results, sort_keys=True, indent=4))
-
-
-# arrive one string spliting the args with space
-def symbol_entry(entry):
-    symbol_name, addr_str = entry.split('=')
-    addr = int(addr_str, 16) & int('1' * 12, 2)  # we take only the last 12 bits
-    return {symbol_name: addr}
 
 
 ################################################################################
@@ -153,16 +150,13 @@ if __name__ == '__main__':
     subparsers = parser.add_subparsers(dest='action')
     subparsers.required = True
 
-    # action
-    _ = subparsers.add_parser('fetch')
-    identify_parser = subparsers.add_parser('identify')
-    find_parser = subparsers.add_parser('find')
+    fetch_parser = subparsers.add_parser('fetch')
 
-    # argument identify
+    identify_parser = subparsers.add_parser('identify')
     identify_parser.add_argument('libc', type=argparse.FileType())
 
-    # find arguments
-    find_parser.add_argument('symbols', type=symbol_entry, nargs='+', metavar='SYMBOL=OFFSET')
+    find_parser = subparsers.add_parser('find')
+    find_parser.add_argument('symbols', type=symbol_address_pair, nargs='+', metavar='symbol=address')
 
     args = parser.parse_args()
 
@@ -171,5 +165,4 @@ if __name__ == '__main__':
     elif args.action == 'identify':
         identify(args.libc.name)
     elif args.action == 'find':
-        symbols_map = dict(collections.ChainMap(*args.symbols))
-        find(symbols_map)
+        find(args.symbols)
