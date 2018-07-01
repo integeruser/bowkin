@@ -13,7 +13,6 @@ for DISTRO in "jessie" "wheezy" "stretch"; do
         cd "$WORKDIR"
             DEB_URLS="$(wget -O - "https://packages.debian.org/$DISTRO/$ARCH/libc6/download" 2>/dev/null | grep -o -m 1 "http://[^\"]*libc6[^\"]*.deb")"
             for DEB_URL in $DEB_URLS; do
-                echo "Fetching: $DEB_URL"
                 DEB_FILENAME="$(basename "$DEB_URL")"
                 if [[ $DEB_FILENAME =~ libc6_(.*)_$ARCH.deb ]]; then
                     VERS="${BASH_REMATCH[1]}"

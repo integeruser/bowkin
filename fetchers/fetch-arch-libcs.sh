@@ -22,7 +22,7 @@ for PKG_URL in $PKG_URLS; do
         LIBC_FILENAME="libc-$ARCH-$VERS.so"
         LD_FILENAME="ld-$ARCH-$VERS.so"
         if [[ ( ! -f $LIBC_FILENAME ) || ( ! -f $LD_FILENAME ) ]]; then
-            echo "Fetching: "$PKG_FILENAME""
+            echo "Processing: "$PKG_FILENAME""
 
             pushd . >/dev/null 2>&1
             TEMPDIR="$(mktemp -d)"
@@ -33,6 +33,8 @@ for PKG_URL in $PKG_URLS; do
                     mv "$(realpath $(find "$TEMPDIR" -name "ld-*.so"))" "$WORKDIR/$LD_FILENAME"
                 fi
             popd >/dev/null 2>&1
+        else
+            echo "Skipping: $PKG_FILENAME"
         fi
     fi
 done
