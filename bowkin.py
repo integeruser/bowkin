@@ -33,7 +33,7 @@ def identify(libc_filepath, show_matches=True):
         if show_matches:
             print(json.dumps(libcs[libc_buildID], sort_keys=True, indent=4))
         return libcs[libc_buildID]
-    except:
+    except KeyError:
         pass
 
 
