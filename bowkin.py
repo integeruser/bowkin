@@ -2,20 +2,13 @@
 import argparse
 import collections
 import glob
-import gzip
-import hashlib
 import json
-import os
-import pathlib
 import pprint
 import re
-import shutil
 import sqlite3
 import subprocess
-import tempfile
-import urllib.request
 
-import elftools.elf.elffile as elffile
+import elftools.elf.elffile
 
 
 def fetch():
@@ -127,7 +120,7 @@ def find(symbols_map):
             libc_path = f'./{libc_entry["filepath"]}'
 
             with open(libc_path, 'rb') as libc_file:
-                elf = elffile.ELFFile(libc_file)
+                elf = elftools.elf.elffile.ELFFile(libc_file)
                 dynsym_section = elf.get_section_by_name('.dynsym')
 
                 for sym_name, sym_value in symbols_map.items():

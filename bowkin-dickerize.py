@@ -1,19 +1,10 @@
 #!/usr/bin/env python3
 import argparse
-import collections
-import glob
-import gzip
-import hashlib
-import json
 import os
 import pathlib
-import pprint
-import re
 import shutil
-import sqlite3
 import subprocess
 import tempfile
-import urllib.request
 
 import bowkin
 
