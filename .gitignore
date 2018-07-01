@@ -1,6 +1,3 @@
+**/__pycache__/
 libcs/
 libcs.db
-
-venv/
-
-\.vscode/
