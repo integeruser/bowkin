@@ -20,6 +20,13 @@ def fetch():
 ################################################################################
 
 
+def extract_buildID_from_file(libc_filepath):
+    output = subprocess.check_output('file {}'.format(libc_filepath), shell=True)
+    output = output.strip().decode('ascii')
+    buildID = re.search('BuildID\[sha1\]\=(.*?),', output).group(1)
+    return buildID
+
+
 def identify(libc_filepath, show_matches=True):
     libc_buildID = extract_buildID_from_file(libc_filepath)
     try:
@@ -33,48 +40,41 @@ def identify(libc_filepath, show_matches=True):
 ################################################################################
 
 
-def extract_buildID_from_file(libc_filepath):
-    output = subprocess.check_output('file {}'.format(libc_filepath), shell=True)
-    output = output.strip().decode('ascii')
-    buildID = re.search('BuildID\[sha1\]\=(.*?),', output).group(1)
-    return buildID
+def read_db():
+    init_db()
+    build_db()
+
+    libcs = collections.defaultdict(list)
+    with sqlite3.connect('libcs.db') as conn:
+        for architecture, distro, release, version, buildID, filepath in conn.execute('SELECT * FROM libcs'):
+            libcs[buildID].append({
+                'architecture': architecture,
+                'distro': distro,
+                'release': release,
+                'version': version,
+                'filepath': filepath
+            })
+    return libcs
 
 
 def init_db():
     with sqlite3.connect('libcs.db') as conn:
         conn.execute('CREATE TABLE IF NOT EXISTS libcs'
                      '(architecture text, distro text, release text, version text, buildID text, filepath text)')
+
+
+def build_db():
+    with sqlite3.connect('libcs.db') as conn:
         conn.execute('DELETE FROM libcs')
 
-
-def create_db(libcs):
-    init_db()
-
-    with sqlite3.connect('libcs.db') as conn:
-        for buildID in libcs:
-            for libc in libcs[buildID]:
-                conn.execute(
-                    'INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)',
-                    (libc['architecture'], libc['distro'], libc['release'], libc['version'], buildID, libc['filepath']))
-
-
-def parse_libcs():
-    libcs = collections.defaultdict(list)
-    for filepath in glob.glob('libcs/**/libc*.so', recursive=True):
-        m = re.match(
-            r'libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64)-(?P<version>.+?).so',
-            filepath)
-
-        buildID = extract_buildID_from_file(filepath)
-        libcs[buildID].append({
-            'distro': m.group('distro'),
-            'architecture': m.group('architecture'),
-            'release': m.group('release'),
-            'filepath': filepath,
-            'version': m.group('version')
-        })
-
-    return libcs
+        for filepath in glob.glob('libcs/**/libc*.so', recursive=True):
+            m = re.match(
+                r'libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64)-(?P<version>.+?).so',
+                filepath)
+            buildID = extract_buildID_from_file(filepath)
+            conn.execute(
+                'INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)',
+                (m.group('architecture'), m.group('distro'), m.group('release'), m.group('version'), buildID, filepath))
 
 
 ################################################################################
@@ -142,8 +142,7 @@ def find(symbols):
 
 ################################################################################
 
-libcs = parse_libcs()
-create_db(libcs)
+libcs = read_db()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
