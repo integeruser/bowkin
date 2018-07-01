@@ -12,9 +12,9 @@ import elftools.elf.elffile
 
 
 def fetch():
-    subprocess.run('./get-ubuntu-libcs.sh')
-    subprocess.run('./get-debian-libcs.sh')
-    subprocess.run('./get-arch-libcs.sh')
+    subprocess.run('fetchers/fetch-ubuntu-libcs.sh')
+    subprocess.run('fetchers/fetch-debian-libcs.sh')
+    subprocess.run('fetchers/fetch-arch-libcs.sh')
 
 
 ################################################################################
