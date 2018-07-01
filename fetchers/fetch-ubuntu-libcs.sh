@@ -6,17 +6,12 @@ mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 
 for DISTRO in "trusty" "xenial" "artful" "bionic"; do
+    for ARCH in "i386" "amd64"; do
     pushd . >/dev/null 2>&1
     WORKDIR="$(pwd)/$DISTRO"
     mkdir -p "$WORKDIR"
     cd "$WORKDIR"
-        DEB_URLS=""
-        for ARCH in "i386" "amd64"; do
-            DEB_URLS+=" $(wget -O - "https://packages.ubuntu.com/$DISTRO/$ARCH/libc6/download" 2>/dev/null \
-                | grep -o -m 1 "http://[^\"]*libc6[^\"]*.deb")"
-        done
-        set -- junk $DEB_URLS
-
+            DEB_URLS="$(wget -O - "https://packages.ubuntu.com/$DISTRO/$ARCH/libc6/download" 2>/dev/null | grep -o -m 1 "http://[^\"]*libc6[^\"]*.deb")"
         for DEB_URL in $DEB_URLS; do
             DEB_FILENAME="$(basename "$DEB_URL")"
             if [[ $DEB_FILENAME =~ libc6_(.*)_$ARCH.deb ]]; then
@@ -40,4 +35,5 @@ for DISTRO in "trusty" "xenial" "artful" "bionic"; do
             fi
         done
     popd >/dev/null 2>&1
+done
 done
