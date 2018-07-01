@@ -87,54 +87,6 @@ def parse_libcs():
 ################################################################################
 
 
-def create_base_image(base, base_image_name):
-    try:
-        subprocess.check_output(f'docker inspect {base_image_name}', shell=True)
-    except subprocess.CalledProcessError:
-        subprocess.run(
-            f'docker build --rm -f {base.name} -t {base_image_name} {os.path.dirname(base.name)}', shell=True)
-
-
-def create_specific_image(libcs_entry, base_image_name, specific_image_name):
-    try:
-        subprocess.check_output(f'docker inspect {specific_image_name}', shell=True)
-    except subprocess.CalledProcessError:
-        libc_path = libcs_entry['filepath']
-        libc_basename = os.path.basename(libc_path).replace('libc-', '')
-        ld_path = f'{os.path.dirname(libc_path)}/ld-{libc_basename}'
-
-        with tempfile.TemporaryDirectory() as tempdir:
-            with open(tempdir / pathlib.Path('Dockerfile'), 'wb') as f:
-                f.write((
-                    f'FROM {base_image_name}:latest\n'
-                    f'ADD libc-{libc_basename} /library/libc-{libc_basename}\n'
-                    f'COPY ld-{libc_basename} /library/ld-{libc_basename}\n'
-                    f'RUN sed -i "s|gdbserver_args += \\[\'localhost:0\'\\]|gdbserver_args += \\[\'--wrapper\', \'env LD_PRELOAD=\\"/library/ld-{libc_basename} /library/libc-{libc_basename}\\"\', \'--\', \'localhost:0\'\\]|" /usr/local/lib/python2.7/dist-packages/pwnlib/gdb.py\n'
-                    f'WORKDIR /home').encode('ascii'))
-                shutil.copy(libc_path, tempdir)
-                shutil.copy(ld_path, tempdir)
-            subprocess.run(f'docker build --rm -t {specific_image_name} {tempdir}', shell=True)
-
-
-# if the container is yet running we stop it and remove the container
-# so every active session (at most one) will be stopped, in this way every time that we start pwnerize
-# we can choose the shared library. no more than one terminal can have access to a specific container
-def run_container(container_name, share):
-    try:
-        subprocess.check_output(f'docker container inspect {container_name}', shell=True)
-        subprocess.check_output(f'docker stop {container_name} && docker rm {container_name}', shell=True)
-    except subprocess.CalledProcessError:
-        pass
-
-    if share:
-        subprocess.run(
-            f'docker run --privileged --cap-add=SYS_PTRACE --name {container_name} --volume {share}:/home/share -it {container_name}',
-            shell=True)
-    else:
-        subprocess.run(
-            f'docker run --privileged --cap-add=SYS_PTRACE --name {container_name} -it {container_name}', shell=True)
-
-
 def show_matches(libcs_matches):
     print('Possible entry:')
     for index, entry in enumerate(libcs_matches):
@@ -160,60 +112,6 @@ def get_entry(libcs_matches):
         except ValueError:
             print("Not valid")
             continue
-
-
-def clean(base_image_name, distro_name, libc_basename, container_name):
-    image_name = container_name
-
-    try:  # remove container
-        subprocess.run(
-            f'docker container inspect {container_name}',
-            shell=True,
-            check=True,
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL)
-        subprocess.check_output(f'docker stop {container_name} && docker rm {container_name}', shell=True)
-        print(f'Container {container_name} has been removed')
-    except subprocess.CalledProcessError:
-        print((f'The container related with the libc {libc_basename} of the'
-               f'distro {distro_name} using the base image {base_image_name} not exist'))
-
-    try:  # try remove image
-        subprocess.run(
-            f'docker image inspect {image_name}',
-            shell=True,
-            check=True,
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL)
-        subprocess.check_output(f'docker rmi {image_name}', shell=True)
-        print(f'Image {image_name} has been removed')
-    except:
-        print((f'The image related with the libc {libc_basename} of the distro'
-               f'{distro_name} using the base image {base_image_name} not exist'))
-
-
-def pwnerize(args):
-    libcs_matches = identify(args.libc.name, show_matches=False)
-    if not libcs_matches:
-        print('No match found')
-        exit(1)
-    libcs_entry = get_entry(libcs_matches)
-
-    distro_name = libcs_entry["distro"]
-    libc_basename = pathlib.Path(libcs_entry["filepath"]).stem
-
-    base_image_name = f'pwnerize-{pathlib.Path(args.base.name).stem}'
-    base_and_distro_name = f'{base_image_name}-{distro_name}'
-    specific_image_name = f'{base_and_distro_name}-{libc_basename}'
-    container_name = specific_image_name
-
-    if args.pwnerize_action == 'run':
-        create_base_image(args.base, base_image_name)
-        create_specific_image(libcs_entry, base_image_name, specific_image_name)
-
-        run_container(container_name, args.share)
-    elif args.pwnerize_action == 'clean':
-        clean(base_image_name, distro_name, libc_basename, container_name)
 
 
 ################################################################################
@@ -254,6 +152,9 @@ def symbol_entry(entry):
 
 ################################################################################
 
+libcs = parse_libcs()
+create_db(libcs)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='action')
@@ -262,42 +163,20 @@ if __name__ == '__main__':
     # action
     _ = subparsers.add_parser('fetch')
     identify_parser = subparsers.add_parser('identify')
-    pwnerize_sub_parser = subparsers.add_parser('pwnerize')
     find_parser = subparsers.add_parser('find')
 
     # argument identify
     identify_parser.add_argument('libc', type=argparse.FileType())
-
-    # creation sub_parser pwnerize
-    pwnerize_sub_parser = pwnerize_sub_parser.add_subparsers(dest='pwnerize_action')
-    pwnerize_stop = pwnerize_sub_parser.add_parser('clean')
-    pwnerize_run = pwnerize_sub_parser.add_parser('run')
-    pwnerize_sub_parser.required = True
-
-    # common arguments of the sub_parser of pwnerize
-    pwnerize_stop.add_argument('base', type=argparse.FileType())
-    pwnerize_run.add_argument('base', type=argparse.FileType())
-
-    pwnerize_stop.add_argument('libc', type=argparse.FileType())
-    pwnerize_run.add_argument('libc', type=argparse.FileType())
-
-    # pwnerize_run specific argument
-    pwnerize_run.add_argument('--share')
 
     # find arguments
     find_parser.add_argument('symbols', type=symbol_entry, nargs='+', metavar='SYMBOL=OFFSET')
 
     args = parser.parse_args()
 
-    libcs = parse_libcs()
-    create_db(libcs)
-
     if args.action == 'fetch':
         fetch()
     elif args.action == 'identify':
         identify(args.libc.name)
-    elif args.action == 'pwnerize':
-        pwnerize(args)
     elif args.action == 'find':
         symbols_map = dict(collections.ChainMap(*args.symbols))
         find(symbols_map)
