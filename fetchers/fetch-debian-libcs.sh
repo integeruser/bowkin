@@ -6,19 +6,22 @@ mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 
 for DISTRO in "jessie" "wheezy" "stretch"; do
-    for ARCH in "i386" "amd64"; do
+    for ARCH in "i386" "amd64" "armel" "armhf" "arm64"; do
         pushd . >/dev/null 2>&1
         WORKDIR="$(pwd)/$DISTRO"
         mkdir -p "$WORKDIR"
         cd "$WORKDIR"
-            DEB_URLS="$(wget -O - "https://packages.debian.org/$DISTRO/$ARCH/libc6/download" 2>/dev/null | grep -o -m 1 "http://[^\"]*libc6[^\"]*.deb")"
+        
+            DEB_URLS="$(wget -O - "https://packages.debian.org/$DISTRO/$ARCH/libc6/download" 2>/dev/null | grep -o -m 1 "http://[^\"]*libc6[^\"]*.deb" || true)"
+            
             for DEB_URL in $DEB_URLS; do
                 DEB_FILENAME="$(basename "$DEB_URL")"
                 if [[ $DEB_FILENAME =~ libc6_(.*)_$ARCH.deb ]]; then
                     VERS="${BASH_REMATCH[1]}"
 
-                    LIBC_FILENAME="libc-$ARCH-$VERS.so"
-                    LD_FILENAME="ld-$ARCH-$VERS.so"
+                    LIBC_FILENAME=$(sed -E 's/[^a-zA-Z0-9_\.\-]/_/g' <<< "libc-$ARCH-$VERS.so")
+                    LD_FILENAME=$(sed -E 's/[^a-zA-Z0-9_\.\-]/_/g' <<< "ld-$ARCH-$VERS.so")
+                    
                     if [[ ( ! -f $LIBC_FILENAME ) || ( ! -f $LD_FILENAME ) ]]; then
                         echo "Processing: $DEB_FILENAME"
 
