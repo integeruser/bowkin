@@ -69,7 +69,7 @@ def build_db():
 
         for filepath in glob.glob('libcs/**/libc*.so', recursive=True):
             m = re.match(
-                r'libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64)-(?P<version>.+?).so',
+                r'libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so',
                 filepath)
             buildID = extract_buildID_from_file(filepath)
             conn.execute(
