@@ -13,8 +13,7 @@ def create_base_image(base, base_image_name):
     try:
         subprocess.check_output(f'docker inspect {base_image_name}', shell=True)
     except subprocess.CalledProcessError:
-        subprocess.run(
-            f'docker build --rm -f {base.name} -t {base_image_name} {os.path.dirname(base.name)}', shell=True)
+        subprocess.run(f'docker build -f {base.name} -t {base_image_name} {os.path.dirname(base.name)}', shell=True)
 
 
 def create_specific_image(libcs_entry, base_image_name, specific_image_name):
@@ -35,7 +34,7 @@ def create_specific_image(libcs_entry, base_image_name, specific_image_name):
                     f'WORKDIR /home').encode('ascii'))
                 shutil.copy(libc_path, tempdir)
                 shutil.copy(ld_path, tempdir)
-            subprocess.run(f'docker build --rm -t {specific_image_name} {tempdir}', shell=True)
+            subprocess.run(f'docker build -t {specific_image_name} {tempdir}', shell=True)
 
 
 # if the container is yet running we stop it and remove the container
