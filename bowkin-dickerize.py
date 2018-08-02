@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import json
 
 import bowkin
 
@@ -47,6 +48,7 @@ def create_specific_image(libcs_entry, base_image_name, specific_image_name):
 # so every active session (at most one) will be stopped, in this way every time that we start pwnerize
 # we can choose the shared library. no more than one terminal can have access to a specific container
 def run_container(container_name, share):
+    image_name = container_name
     try:
         subprocess.check_output(f'docker container inspect {container_name}', shell=True)
         subprocess.check_output(f'docker stop {container_name} && docker rm {container_name}', shell=True)
@@ -55,11 +57,34 @@ def run_container(container_name, share):
 
     if share:
         subprocess.run(
-            f'docker run --privileged --cap-add=SYS_PTRACE --name {container_name} --volume {share}:/home/share -it {container_name}',
+            f'docker run --privileged --cap-add=SYS_PTRACE --name {container_name} --volume {share}:/home/share -it {image_name}',
             shell=True)
     else:
         subprocess.run(
-            f'docker run --privileged --cap-add=SYS_PTRACE --name {container_name} -it {container_name}', shell=True)
+            f'docker run --privileged --cap-add=SYS_PTRACE --name {container_name} -it {image_name}', shell=True)
+
+
+def start_container(container_name, share):
+    image_name = container_name
+    try:
+        subprocess.check_output(f'docker container inspect {container_name}', shell=True)
+        status = get_container_status(container_name)
+        if status == 'exited':
+            subprocess.run(f'docker start -ai {container_name}', shell=True)
+        elif status == 'running':
+            subprocess.run(f'docker exec -it {container_name} /bin/bash', shell=True)
+        # subprocess.check_output(f'docker stop {container_name} && docker rm {container_name}', shell=True)
+    except subprocess.CalledProcessError:
+        run_container(container_name, share)  # if the container doesn't not exist start act like run
+
+
+def get_container_status(container_name):
+    try:
+        output = subprocess.check_output(f'docker container inspect {container_name}', shell=True)
+        status = json.loads(output)[0]['State']  # only one should exist
+        return status['Status']
+    except subprocess.CalledProcessError:
+        return None
 
 
 def clean(base_image_name, distro_name, libc_basename, container_name):
@@ -96,7 +121,7 @@ os.chdir(sys.path[0])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices={'clean', 'run'})
+    parser.add_argument('action', choices={'clean', 'run', 'start'})
     parser.add_argument('base', type=argparse.FileType())
     parser.add_argument('libc', type=argparse.FileType())
     parser.add_argument('--share')
@@ -121,5 +146,10 @@ if __name__ == '__main__':
         create_specific_image(libcs_entry, base_image_name, specific_image_name)
 
         run_container(container_name, args.share)
+    elif args.action == 'start':
+        create_base_image(args.base, base_image_name)
+        create_specific_image(libcs_entry, base_image_name, specific_image_name)
+
+        start_container(container_name, args.share)
     elif args.action == 'clean':
         clean(base_image_name, distro_name, libc_basename, container_name)
