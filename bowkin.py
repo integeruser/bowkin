@@ -3,10 +3,12 @@ import argparse
 import collections
 import glob
 import json
+import os
 import pprint
 import re
 import sqlite3
 import subprocess
+import sys
 
 import elftools.elf.elffile
 
@@ -143,8 +145,7 @@ def find(symbols):
     print(json.dumps(results, sort_keys=True, indent=4))
 
 
-################################################################################
-
+os.chdir(sys.path[0])
 libcs = read_db()
 
 if __name__ == '__main__':

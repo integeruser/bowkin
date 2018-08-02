@@ -4,6 +4,7 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
 import tempfile
 
 import bowkin
@@ -90,6 +91,8 @@ def clean(base_image_name, distro_name, libc_basename, container_name):
         print((f'The image related with the libc {libc_basename} of the distro'
                f'{distro_name} using the base image {base_image_name} not exist'))
 
+
+os.chdir(sys.path[0])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
