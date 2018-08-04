@@ -44,31 +44,67 @@ def create_specific_image(libcs_entry, base_image_name, specific_image_name):
             subprocess.run(f'docker build -t {specific_image_name} {tempdir}', shell=True)
 
 
+def first_container_run(container_name, share):
+    image_name = container_name
+
+    if share:
+        subprocess.check_output(
+            f'docker run -dt --privileged --cap-add=SYS_PTRACE --name {container_name} --volume {share}:/home/share -it {image_name}',
+            shell=True)
+    else:
+        subprocess.check_output(
+            f'docker run -dt --privileged --cap-add=SYS_PTRACE --name {container_name} -it {image_name}', shell=True)
+    continue_run_container(container_name)
+
+
+def continue_run_container(container_name):
+    status = get_container_param(container_name, 'State')['Status']
+
+    if status == 'exited':
+        subprocess.run(f'docker start -ai {container_name}', shell=True)
+
+    elif status == 'running':
+        subprocess.run(f'docker exec -it {container_name} /bin/bash', shell=True)
+
+
 # if the container is yet running we stop it and remove the container
 # so every active session (at most one) will be stopped, in this way every time that we start pwnerize
 # we can choose the shared library. no more than one terminal can have access to a specific container
 def run_container(container_name, share):
     image_name = container_name
-    try:
-        subprocess.check_output(f'docker container inspect {container_name}', shell=True)
-        subprocess.check_output(f'docker stop {container_name} && docker rm {container_name}', shell=True)
-    except subprocess.CalledProcessError:
-        pass
 
-    if share:
-        subprocess.run(
-            f'docker run --privileged --cap-add=SYS_PTRACE --name {container_name} --volume {share}:/home/share -it {image_name}',
-            shell=True)
-    else:
-        subprocess.run(
-            f'docker run --privileged --cap-add=SYS_PTRACE --name {container_name} -it {image_name}', shell=True)
+    try:
+        subprocess.check_output(
+            f'docker container inspect {container_name}', shell=True)  # check if the container exists
+
+        mounts = get_container_param(container_name, 'Mounts')
+
+        if mounts:  # check if mounts exists
+            shared_path = mounts[0]['Source']
+
+            if share and shared_path != share:  # check if the users wants to update the shared foder
+                subprocess.check_output(f'docker stop {container_name} && docker rm {container_name}', shell=True)
+                first_container_run(container_name, share)
+            else:
+                continue_run_container(container_name)
+
+        elif share:  # if there's no mounts but the user specified a share
+            subprocess.check_output(f'docker stop {container_name} && docker rm {container_name}', shell=True)
+            first_container_run(container_name, share)
+
+        else:
+            continue_run_container(container_name)
+
+    except subprocess.CalledProcessError:  # container doesn't exists
+        first_container_run(container_name, share)
 
 
 def start_container(container_name, share):
     image_name = container_name
     try:
         subprocess.check_output(f'docker container inspect {container_name}', shell=True)
-        status = get_container_status(container_name)
+
+        state = get_container_status(container_name, 'State')['Status']
         if status == 'exited':
             subprocess.run(f'docker start -ai {container_name}', shell=True)
         elif status == 'running':
@@ -78,11 +114,11 @@ def start_container(container_name, share):
         run_container(container_name, share)  # if the container doesn't not exist start act like run
 
 
-def get_container_status(container_name):
+def get_container_param(container_name, param):
     try:
         output = subprocess.check_output(f'docker container inspect {container_name}', shell=True)
-        status = json.loads(output)[0]['State']  # only one should exist
-        return status['Status']
+        return json.loads(output)[0][param]  # only one should exist
+
     except subprocess.CalledProcessError:
         return None
 
@@ -121,7 +157,7 @@ os.chdir(sys.path[0])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices={'clean', 'run', 'start'})
+    parser.add_argument('action', choices={'clean', 'run'})
     parser.add_argument('base', type=argparse.FileType())
     parser.add_argument('libc', type=argparse.FileType())
     parser.add_argument('--share')
@@ -146,10 +182,5 @@ if __name__ == '__main__':
         create_specific_image(libcs_entry, base_image_name, specific_image_name)
 
         run_container(container_name, args.share)
-    elif args.action == 'start':
-        create_base_image(args.base, base_image_name)
-        create_specific_image(libcs_entry, base_image_name, specific_image_name)
-
-        start_container(container_name, args.share)
     elif args.action == 'clean':
         clean(base_image_name, distro_name, libc_basename, container_name)
