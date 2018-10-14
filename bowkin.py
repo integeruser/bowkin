@@ -73,6 +73,8 @@ def build_db():
         conn.execute('DELETE FROM libcs')
 
         for filepath in glob.glob('libcs/**/libc*.so', recursive=True):
+            if 'dbg' in os.path.basename(filepath):
+                continue
             m = re.match(
                 r'libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so',
                 filepath)

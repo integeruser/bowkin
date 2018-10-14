@@ -11,17 +11,16 @@ for DISTRO in "trusty" "xenial" "artful" "bionic"; do
         WORKDIR="$(pwd)/$DISTRO"
         mkdir -p "$WORKDIR"
         cd "$WORKDIR"
-            
+            # download dynamic loaders and libcs
             DEB_URLS="$(wget -O - "https://packages.ubuntu.com/$DISTRO/$ARCH/libc6/download" 2>/dev/null | grep -o -m 1 "http://[^\"]*libc6[^\"]*.deb" || true)"
             for DEB_URL in $DEB_URLS; do
-
-                DEB_FILENAME="$(basename "$DEB_URL")"    
+                DEB_FILENAME="$(basename "$DEB_URL")"
                 if [[ $DEB_FILENAME =~ libc6_(.*)_$ARCH.deb ]]; then
                     VERS="${BASH_REMATCH[1]}"
 
                     LIBC_FILENAME=$(sed -E 's/[^a-zA-Z0-9_\.\-]/_/g' <<< "libc-$ARCH-$VERS.so")
                     LD_FILENAME=$(sed -E 's/[^a-zA-Z0-9_\.\-]/_/g' <<< "ld-$ARCH-$VERS.so")
-                    
+
                     if [[ ( ! -f $LIBC_FILENAME ) || ( ! -f $LD_FILENAME ) ]]; then
                         echo "Processing: $DEB_FILENAME"
 
@@ -30,8 +29,33 @@ for DISTRO in "trusty" "xenial" "artful" "bionic"; do
                         cd "$TEMPDIR"
                             wget "$DEB_URL" 2>/dev/null
                             if ar x "$DEB_FILENAME" && tar xf data.tar.?z; then
-                                mv "$(realpath $(find "$TEMPDIR" -name "libc.so.6"))" "$WORKDIR/$LIBC_FILENAME"
-                                mv "$(realpath $(find "$TEMPDIR" -name "ld-*.so"))" "$WORKDIR/$LD_FILENAME"
+                                mv "$(realpath $(find . -name "libc.so.6"))" "$WORKDIR/$LIBC_FILENAME"
+                                mv "$(realpath $(find . -name "ld-*.so"))" "$WORKDIR/$LD_FILENAME"
+                            fi
+                        popd >/dev/null 2>&1
+                    else
+                        echo "Skipping: $DEB_FILENAME"
+                    fi
+                fi
+            done
+            # download debug symbols
+            DEB_URLS="$(wget -O - "https://packages.ubuntu.com/$DISTRO/$ARCH/libc6-dbg/download" 2>/dev/null | grep -o -m 1 "http://[^\"]*libc6[^\"]*.deb" || true)"
+            for DEB_URL in $DEB_URLS; do
+                DEB_FILENAME="$(basename "$DEB_URL")"
+                if [[ $DEB_FILENAME =~ libc6-dbg_(.*)_$ARCH.deb ]]; then
+                    VERS="${BASH_REMATCH[1]}"
+
+                    LIBC_DBG_FILENAME=$(sed -E 's/[^a-zA-Z0-9_\.\-]/_/g' <<< "libc-dbg-$ARCH-$VERS.so")
+
+                    if [[ ( ! -f $LIBC_DBG_FILENAME ) ]]; then
+                        echo "Processing: $DEB_FILENAME"
+
+                        pushd . >/dev/null 2>&1
+                        TEMPDIR="$(mktemp -d)"
+                        cd "$TEMPDIR"
+                            wget "$DEB_URL" 2>/dev/null
+                            if ar x "$DEB_FILENAME" && tar xf data.tar.?z; then
+                                mv "$(realpath $(find . -name "libc-*.so"))" "$WORKDIR/$LIBC_DBG_FILENAME"
                             fi
                         popd >/dev/null 2>&1
                     else
