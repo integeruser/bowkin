@@ -55,8 +55,9 @@ def extract_buildID_from_file(libc_filepath):
 
 def identify(libc_filepath):
     with sqlite3.connect("libcs.db") as conn:
+        conn.row_factory = sqlite3.Row
         return [
-            libc
+            dict(libc)
             for libc in conn.execute(
                 "SELECT * FROM libcs where buildID=?",
                 (extract_buildID_from_file(libc_filepath),),
@@ -67,9 +68,9 @@ def identify(libc_filepath):
 def find(symbols):
     matches = []
     with sqlite3.connect("libcs.db") as conn:
+        conn.row_factory = sqlite3.Row
         for libc in conn.execute("SELECT * FROM libcs"):
-            _, _, _, _, _, filepath = libc
-            with open(filepath, "rb") as f:
+            with open(libc["filepath"], "rb") as f:
                 elf = elftools.elf.elffile.ELFFile(f)
                 dynsym_section = elf.get_section_by_name(".dynsym")
 
@@ -83,7 +84,7 @@ def find(symbols):
                     except (IndexError, TypeError):
                         break
                 else:
-                    matches.append(libc)
+                    matches.append(dict(libc))
     return matches
 
 
@@ -118,8 +119,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.action == "identify":
-        for _, _, _, _, _, filepath in identify(args.libc.name):
-            print(filepath)
+        for libc in identify(args.libc.name):
+            print(json.dumps(libc, sort_keys=True, indent=4))
     elif args.action == "find":
-        for _, _, _, _, _, filepath in find(args.symbols):
-            print(filepath)
+        for libc in find(args.symbols):
+            print(json.dumps(libc, sort_keys=True, indent=4))
