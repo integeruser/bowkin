@@ -32,8 +32,6 @@ def get_libc_dbg_proper_filename(libc_filepath):
         return libc_dbg_filename
 
 
-libcs = bowkin.read_db()
-
 parser = argparse.ArgumentParser()
 parser.add_argument("binary", type=argparse.FileType())
 parser.add_argument("libc", type=argparse.FileType())
@@ -44,15 +42,16 @@ binary_dirpath = os.path.dirname(binary_filepath)
 
 
 # identify the supplied libc
-libcs_matches = bowkin.identify(args.libc.name, show_matches=False)
-if not libcs_matches:
+matches = bowkin.identify(args.libc.name)
+if not matches:
     abort("The supplied libc is not in the database.")
-libcs_entry = bowkin.get_entry(libcs_matches)
+# TODO pick the first
+libc = matches[0]
 
 # TODO do better
-libc_filepath = libcs_entry["filepath"]
-libc_dbg_filepath = libcs_entry["filepath"].replace("libc-", "libc-dbg-")
-libc_version = libcs_entry["version"]
+libc_filepath = libc["filepath"]
+libc_dbg_filepath = libc["filepath"].replace("libc-", "libc-dbg-")
+libc_version = libc["version"]
 ld_filepath = f"{os.path.dirname(libc_filepath)}/ld-{os.path.basename(libc_filepath).replace('libc-', '')}"
 
 
