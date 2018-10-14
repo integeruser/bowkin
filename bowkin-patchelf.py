@@ -59,7 +59,7 @@ ld_filepath = f"{os.path.dirname(libc_filepath)}/ld-{os.path.basename(libc_filep
 if not query_yes_no(
     f"Copy {colorama.Style.BRIGHT}{ld_filepath}{colorama.Style.RESET_ALL},"
     f" {colorama.Style.BRIGHT}{libc_filepath}{colorama.Style.RESET_ALL}"
-    f"and {colorama.Style.BRIGHT}{libc_dbg_filepath}{colorama.Style.RESET_ALL}"
+    f" and {colorama.Style.BRIGHT}{libc_dbg_filepath}{colorama.Style.RESET_ALL}"
     f" to {colorama.Style.BRIGHT}{binary_dirpath}{colorama.Style.RESET_ALL}?"
 ):
     abort()
