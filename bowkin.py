@@ -13,7 +13,7 @@ import sys
 import elftools.elf.elffile
 
 
-def build_db():
+def rebuild_db():
     with sqlite3.connect("libcs.db") as conn:
         conn.execute(
             "CREATE TABLE IF NOT EXISTS libcs"
@@ -101,8 +101,6 @@ def symbol_address_pair(text):
 
 os.chdir(sys.path[0])
 
-build_db()
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="action")
@@ -116,6 +114,8 @@ if __name__ == "__main__":
         "symbols", type=symbol_address_pair, nargs="+", metavar="symbol=address"
     )
 
+    rebuild_parser = subparsers.add_parser("rebuild")
+
     args = parser.parse_args()
 
     if args.action == "identify":
@@ -124,3 +124,5 @@ if __name__ == "__main__":
     elif args.action == "find":
         for libc in find(args.symbols):
             print(json.dumps(libc, sort_keys=True, indent=4))
+    elif args.action == "rebuild":
+        rebuild_db()
