@@ -13,28 +13,6 @@ import sys
 import elftools.elf.elffile
 
 
-def extract_buildID_from_file(libc_filepath):
-    output = subprocess.check_output("file {}".format(libc_filepath), shell=True)
-    output = output.strip().decode("ascii")
-    buildID = re.search("BuildID\[sha1\]\=(.*?),", output).group(1)
-    return buildID
-
-
-def identify(libc_filepath):
-    with sqlite3.connect("libcs.db") as conn:
-        matches = [
-            libc
-            for libc in conn.execute(
-                "SELECT * FROM libcs where buildID=?",
-                (extract_buildID_from_file(libc_filepath),),
-            )
-        ]
-    return matches
-
-
-################################################################################
-
-
 def build_db():
     with sqlite3.connect("libcs.db") as conn:
         conn.execute(
@@ -68,10 +46,23 @@ def build_db():
 ################################################################################
 
 
-def symbol_address_pair(string):
-    symbol, address = string.split("=")
-    offset = int(address, 16) & 0b111111111111
-    return (symbol, offset)
+def extract_buildID_from_file(libc_filepath):
+    output = subprocess.check_output("file {}".format(libc_filepath), shell=True)
+    output = output.strip().decode("ascii")
+    buildID = re.search("BuildID\[sha1\]\=(.*?),", output).group(1)
+    return buildID
+
+
+def identify(libc_filepath):
+    with sqlite3.connect("libcs.db") as conn:
+        matches = [
+            libc
+            for libc in conn.execute(
+                "SELECT * FROM libcs where buildID=?",
+                (extract_buildID_from_file(libc_filepath),),
+            )
+        ]
+    return matches
 
 
 def find(symbols):
@@ -98,6 +89,17 @@ def find(symbols):
     print(json.dumps(results, sort_keys=True, indent=4))
 
 
+################################################################################
+
+
+def symbol_address_pair(text):
+    symbol, address = text.split("=")
+    offset = int(address, 16) & 0b111111111111
+    return (symbol, offset)
+
+
+################################################################################
+
 os.chdir(sys.path[0])
 
 build_db()
@@ -120,6 +122,5 @@ if __name__ == "__main__":
     if args.action == "identify":
         for _, _, _, _, _, filepath in identify(args.libc.name):
             print(filepath)
-
     elif args.action == "find":
         find(args.symbols)
