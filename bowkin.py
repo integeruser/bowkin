@@ -34,12 +34,13 @@ def extract_buildID_from_file(libc_filepath):
 
 def identify(libc_filepath, show_matches=True):
     libc_buildID = extract_buildID_from_file(libc_filepath)
-    try:
-        if show_matches:
-            print(json.dumps(libcs[libc_buildID], sort_keys=True, indent=4))
-        return libcs[libc_buildID]
-    except KeyError:
-        pass
+
+    with sqlite3.connect('libcs.db') as conn:
+        matches = [libc for libc in conn.execute('SELECT * FROM libcs where buildID=?', (libc_buildID,))]
+    if show_matches:
+        for architecture, distro, release, version, buildID, filepath in matches:
+            print(filepath)
+    return matches
 
 
 ################################################################################
@@ -48,18 +49,6 @@ def identify(libc_filepath, show_matches=True):
 def read_db():
     init_db()
     build_db()
-
-    libcs = collections.defaultdict(list)
-    with sqlite3.connect('libcs.db') as conn:
-        for architecture, distro, release, version, buildID, filepath in conn.execute('SELECT * FROM libcs'):
-            libcs[buildID].append({
-                'architecture': architecture,
-                'distro': distro,
-                'release': release,
-                'version': version,
-                'filepath': filepath
-            })
-    return libcs
 
 
 def init_db():
@@ -126,12 +115,10 @@ def symbol_address_pair(string):
 def find(symbols):
     results = []
 
-    for _, libc_entries in libcs.items():  # for each hash get the list of libcs
-        for libc_entry in libc_entries:
-            libc_path = f'./{libc_entry["filepath"]}'
-
-            with open(libc_path, 'rb') as libc_file:
-                elf = elftools.elf.elffile.ELFFile(libc_file)
+    with sqlite3.connect('libcs.db') as conn:
+        for architecture, distro, release, version, buildID, filepath in conn.execute('SELECT * FROM libcs'):
+            with open(filepath, 'rb') as f:
+                elf = elftools.elf.elffile.ELFFile(f)
                 dynsym_section = elf.get_section_by_name('.dynsym')
 
                 for symbol, address in symbols:
@@ -148,7 +135,8 @@ def find(symbols):
 
 
 os.chdir(sys.path[0])
-libcs = read_db()
+
+read_db()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
