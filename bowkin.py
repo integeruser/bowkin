@@ -32,40 +32,28 @@ def extract_buildID_from_file(libc_filepath):
     return buildID
 
 
-def identify(libc_filepath, show_matches=True):
-    libc_buildID = extract_buildID_from_file(libc_filepath)
-
+def identify(libc_filepath):
     with sqlite3.connect("libcs.db") as conn:
         matches = [
             libc
             for libc in conn.execute(
-                "SELECT * FROM libcs where buildID=?", (libc_buildID,)
+                "SELECT * FROM libcs where buildID=?",
+                (extract_buildID_from_file(libc_filepath),),
             )
         ]
-    if show_matches:
-        for architecture, distro, release, version, buildID, filepath in matches:
-            print(filepath)
     return matches
 
 
 ################################################################################
 
 
-def read_db():
-    init_db()
-    build_db()
-
-
-def init_db():
+def build_db():
     with sqlite3.connect("libcs.db") as conn:
         conn.execute(
             "CREATE TABLE IF NOT EXISTS libcs"
             "(architecture text, distro text, release text, version text, buildID text, filepath text)"
         )
 
-
-def build_db():
-    with sqlite3.connect("libcs.db") as conn:
         conn.execute("DELETE FROM libcs")
 
         for filepath in glob.glob("libcs/**/libc*.so", recursive=True):
@@ -87,36 +75,6 @@ def build_db():
                     filepath,
                 ),
             )
-
-
-################################################################################
-
-
-def show_matches(libcs_matches):
-    print("Possible entry:")
-    for index, entry in enumerate(libcs_matches):
-        print(f"{index}) ", end="")
-        pprint.pprint(entry)
-    print("Exit with -1")
-
-
-def get_entry(libcs_matches):
-    if len(libcs_matches) == 1:
-        return libcs_matches[0]
-
-    while True:  # until input is not valid or user want to exit
-        show_matches(libcs_matches)
-        string_choice = input("Chose one entry: ")
-
-        try:
-            choice = int(string_choice)
-            if choice == -1:
-                exit(0)
-            elif 0 <= choice < len(libcs_matches):
-                return libcs_matches[choice]
-        except ValueError:
-            print("Not valid")
-            continue
 
 
 ################################################################################
@@ -154,7 +112,7 @@ def find(symbols):
 
 os.chdir(sys.path[0])
 
-read_db()
+build_db()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -175,7 +133,10 @@ if __name__ == "__main__":
 
     if args.action == "fetch":
         fetch()
+
     elif args.action == "identify":
-        identify(args.libc.name)
+        for _, _, _, _, _, filepath in identify(args.libc.name):
+            print(filepath)
+
     elif args.action == "find":
         find(args.symbols)
