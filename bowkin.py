@@ -13,18 +13,6 @@ import sys
 import elftools.elf.elffile
 
 
-def fetch():
-    try:
-        subprocess.run("fetchers/fetch-ubuntu-libcs.sh")
-        subprocess.run("fetchers/fetch-debian-libcs.sh")
-        subprocess.run("fetchers/fetch-arch-libcs.sh")
-    except KeyboardInterrupt:
-        pass
-
-
-################################################################################
-
-
 def extract_buildID_from_file(libc_filepath):
     output = subprocess.check_output("file {}".format(libc_filepath), shell=True)
     output = output.strip().decode("ascii")
@@ -119,8 +107,6 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers(dest="action")
     subparsers.required = True
 
-    fetch_parser = subparsers.add_parser("fetch")
-
     identify_parser = subparsers.add_parser("identify")
     identify_parser.add_argument("libc", type=argparse.FileType())
 
@@ -131,10 +117,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.action == "fetch":
-        fetch()
-
-    elif args.action == "identify":
+    if args.action == "identify":
         for _, _, _, _, _, filepath in identify(args.libc.name):
             print(filepath)
 
