@@ -15,9 +15,9 @@ import elftools.elf.elffile
 
 def fetch():
     try:
-        subprocess.run('fetchers/fetch-ubuntu-libcs.sh')
-        subprocess.run('fetchers/fetch-debian-libcs.sh')
-        subprocess.run('fetchers/fetch-arch-libcs.sh')
+        subprocess.run("fetchers/fetch-ubuntu-libcs.sh")
+        subprocess.run("fetchers/fetch-debian-libcs.sh")
+        subprocess.run("fetchers/fetch-arch-libcs.sh")
     except KeyboardInterrupt:
         pass
 
@@ -26,17 +26,22 @@ def fetch():
 
 
 def extract_buildID_from_file(libc_filepath):
-    output = subprocess.check_output('file {}'.format(libc_filepath), shell=True)
-    output = output.strip().decode('ascii')
-    buildID = re.search('BuildID\[sha1\]\=(.*?),', output).group(1)
+    output = subprocess.check_output("file {}".format(libc_filepath), shell=True)
+    output = output.strip().decode("ascii")
+    buildID = re.search("BuildID\[sha1\]\=(.*?),", output).group(1)
     return buildID
 
 
 def identify(libc_filepath, show_matches=True):
     libc_buildID = extract_buildID_from_file(libc_filepath)
 
-    with sqlite3.connect('libcs.db') as conn:
-        matches = [libc for libc in conn.execute('SELECT * FROM libcs where buildID=?', (libc_buildID,))]
+    with sqlite3.connect("libcs.db") as conn:
+        matches = [
+            libc
+            for libc in conn.execute(
+                "SELECT * FROM libcs where buildID=?", (libc_buildID,)
+            )
+        ]
     if show_matches:
         for architecture, distro, release, version, buildID, filepath in matches:
             print(filepath)
@@ -52,36 +57,47 @@ def read_db():
 
 
 def init_db():
-    with sqlite3.connect('libcs.db') as conn:
-        conn.execute('CREATE TABLE IF NOT EXISTS libcs'
-                     '(architecture text, distro text, release text, version text, buildID text, filepath text)')
+    with sqlite3.connect("libcs.db") as conn:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS libcs"
+            "(architecture text, distro text, release text, version text, buildID text, filepath text)"
+        )
 
 
 def build_db():
-    with sqlite3.connect('libcs.db') as conn:
-        conn.execute('DELETE FROM libcs')
+    with sqlite3.connect("libcs.db") as conn:
+        conn.execute("DELETE FROM libcs")
 
-        for filepath in glob.glob('libcs/**/libc*.so', recursive=True):
-            if 'dbg' in os.path.basename(filepath):
+        for filepath in glob.glob("libcs/**/libc*.so", recursive=True):
+            if "dbg" in os.path.basename(filepath):
                 continue
             m = re.match(
-                r'libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so',
-                filepath)
+                r"libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so",
+                filepath,
+            )
             buildID = extract_buildID_from_file(filepath)
             conn.execute(
-                'INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)',
-                (m.group('architecture'), m.group('distro'), m.group('release'), m.group('version'), buildID, filepath))
+                "INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    m.group("architecture"),
+                    m.group("distro"),
+                    m.group("release"),
+                    m.group("version"),
+                    buildID,
+                    filepath,
+                ),
+            )
 
 
 ################################################################################
 
 
 def show_matches(libcs_matches):
-    print('Possible entry:')
+    print("Possible entry:")
     for index, entry in enumerate(libcs_matches):
-        print(f'{index}) ', end='')
+        print(f"{index}) ", end="")
         pprint.pprint(entry)
-    print('Exit with -1')
+    print("Exit with -1")
 
 
 def get_entry(libcs_matches):
@@ -90,7 +106,7 @@ def get_entry(libcs_matches):
 
     while True:  # until input is not valid or user want to exit
         show_matches(libcs_matches)
-        string_choice = input('Chose one entry: ')
+        string_choice = input("Chose one entry: ")
 
         try:
             choice = int(string_choice)
@@ -107,7 +123,7 @@ def get_entry(libcs_matches):
 
 
 def symbol_address_pair(string):
-    symbol, address = string.split('=')
+    symbol, address = string.split("=")
     offset = int(address, 16) & 0b111111111111
     return (symbol, offset)
 
@@ -115,11 +131,13 @@ def symbol_address_pair(string):
 def find(symbols):
     results = []
 
-    with sqlite3.connect('libcs.db') as conn:
-        for architecture, distro, release, version, buildID, filepath in conn.execute('SELECT * FROM libcs'):
-            with open(filepath, 'rb') as f:
+    with sqlite3.connect("libcs.db") as conn:
+        for architecture, distro, release, version, buildID, filepath in conn.execute(
+            "SELECT * FROM libcs"
+        ):
+            with open(filepath, "rb") as f:
                 elf = elftools.elf.elffile.ELFFile(f)
-                dynsym_section = elf.get_section_by_name('.dynsym')
+                dynsym_section = elf.get_section_by_name(".dynsym")
 
                 for symbol, address in symbols:
                     try:
@@ -138,24 +156,26 @@ os.chdir(sys.path[0])
 
 read_db()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest='action')
+    subparsers = parser.add_subparsers(dest="action")
     subparsers.required = True
 
-    fetch_parser = subparsers.add_parser('fetch')
+    fetch_parser = subparsers.add_parser("fetch")
 
-    identify_parser = subparsers.add_parser('identify')
-    identify_parser.add_argument('libc', type=argparse.FileType())
+    identify_parser = subparsers.add_parser("identify")
+    identify_parser.add_argument("libc", type=argparse.FileType())
 
-    find_parser = subparsers.add_parser('find')
-    find_parser.add_argument('symbols', type=symbol_address_pair, nargs='+', metavar='symbol=address')
+    find_parser = subparsers.add_parser("find")
+    find_parser.add_argument(
+        "symbols", type=symbol_address_pair, nargs="+", metavar="symbol=address"
+    )
 
     args = parser.parse_args()
 
-    if args.action == 'fetch':
+    if args.action == "fetch":
         fetch()
-    elif args.action == 'identify':
+    elif args.action == "identify":
         identify(args.libc.name)
-    elif args.action == 'find':
+    elif args.action == "find":
         find(args.symbols)
