@@ -1,99 +1,140 @@
 # bowkin
-`bowkin` is a tool for creating and spawning Docker containers preconfigured with `gdb`, `pwntools` and **specific versions of libc**, to make the debugging (and exploiting) of binaries faster and less painful.
+`bowkin` is a tool for patching binaries to use **specific versions of glibc** (the GNU C standard library).
 
-The tool is very much a **work in progress** and likely to change considerably as it matures.
 
 ## Requisites
-[Docker](https://www.docker.com/), and required dependencies:
+[PatchELF](https://nixos.org/patchelf.html), and a bunch of Python 3 packages:
 ```
 $ pip3 install -r requirements.txt
 ```
 
 ## Usage
-0. Download some libcs and loaders:
+Suppose you're pwning a CTF challenge, for which you were given a binary and the libc used in remote:
 ```
-$ ./bowkin.py fetch
-Processing: libc6_2.19-0ubuntu6.14_i386.deb
-Processing: libc6_2.19-0ubuntu6.14_amd64.deb
-. . .
-```
-1. Identify an unknown libc:
-```
-$ ./bowkin.py identify ./libc.so.6
-[
-    {
-        "architecture": "amd64",
-        "distro": "ubuntu",
-        "filepath": "libcs/ubuntu/trusty/libc-amd64-2.19-0ubuntu6.14.so",
-        "release": "trusty",
-        "version": "2.19-0ubuntu6.14"
-    }
-]
-```
-2. Spawn a Docker container for working with a specific libc:
-```
-$ ./bowkin-dickerize.py run bases/ubuntu-amd64.dockerfile libcs/ubuntu/trusty/libc-amd64-2.19-0ubuntu6.14.so --share ~/Downloads/
-Error: No such object: bowkin-ubuntu-amd64
-Sending build context to Docker daemon  3.072kB
-Step 1/3 : FROM amd64/ubuntu
-latest: Pulling from amd64/ubuntu
-c64513b74145: Pull complete
-01b8b12bad90: Pull complete
-. . .
-Successfully tagged bowkin-ubuntu-amd64-ubuntu-libc-amd64-2.19-0ubuntu6.14:latest
-Error: No such container: bowkin-ubuntu-amd64-ubuntu-libc-amd64-2.19-0ubuntu6.14
-root@9fd52a4fa74c:/home#
-root@1ec1293f9fda:/home# cd share/
-root@1ec1293f9fda:/home/share# ls
-expl.py  test.c
+$ ls
+challenge  libc.so.6
 ```
 ```
-root@1ec1293f9fda:/home/share# cat test.c
-#include <stdio.h>
-#include <gnu/libc-version.h>
-int main (void) { puts (gnu_get_libc_version ()); return 0; }
-root@1ec1293f9fda:/home/share# gcc -o test ./test.c
-root@1ec1293f9fda:/home/share# ./test
+$ file ./challenge
+challenge: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=35bf0d5549463ce1bf1c7040060ee9e70f6a5f98, not stripped
+$ strings ./libc.so.6 | grep ubuntu
+GNU C Library (Ubuntu GLIBC 2.23-0ubuntu10) stable release version 2.23, by Roland McGrath et al.
+<https://bugs.launchpad.net/ubuntu/+source/glibc/+bugs>.
+```
+For the sake of example, the binary just [prints the version of libc it uses during execution](https://sourceware.org/glibc/wiki/FAQ#How_can_I_find_out_which_version_of_glibc_I_am_using_in_the_moment.3F):
+```
+$ ./challenge
 2.27
-root@1ec1293f9fda:/home/share# LD_PRELOAD=/env/lib/x86_64-linux-gnu/libc.so.6 /env/lib64/ld-linux-x86-64.so.2 ./test
-2.19
-root@1ec1293f9fda:/home/share# chroot /env /home/share/test
-2.19
 ```
+which is the version of the libc used by my system (Ubuntu 18.04) at the time of writing.
 ```
-root@1ec1293f9fda:/home/share# gdb -q
-GEF for linux ready, type `gef' to start, `gef config' to configure
-65 commands loaded for GDB 8.1.0.20180409-git using Python engine 3.6
-[*] 5 commands could not be loaded, run `gef missing` to know why.
-gef➤  set exec-wrapper chroot /env
-gef➤  file /home/share/test
-Reading symbols from /home/share/test...(no debugging symbols found)...done.
-gef➤  r
-Starting program: /home/share/test
-2.19
-[Inferior 1 (process 28) exited normally]
+$ ldd ./challenge
+        linux-vdso.so.1 (0x00007ffdb0bfe000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f0fc82c9000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f0fc88bc000)
+$ strings /lib/x86_64-linux-gnu/libc.so.6 | grep ubuntu
+GNU C Library (Ubuntu GLIBC 2.27-3ubuntu1) stable release version 2.27.
+<https://bugs.launchpad.net/ubuntu/+source/glibc/+bugs>.
 ```
+
+So, let's use `bowkin` to make the binary use the libc provided for the challenge.
+1. First, identify the library:
 ```
-root@1ec1293f9fda:/home/share# cat expl.py
+$ ./bowkin.py identify /example/libc.so.6
+{
+    "architecture": "amd64",
+    "buildID": "b5381a457906d279073822a5ceb24c4bfef94ddb",
+    "distro": "ubuntu",
+    "filepath": "libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so",
+    "release": "xenial",
+    "version": "2.23-0ubuntu10"
+}
+```
+It's a match!
+
+2. Second, patch the binary to use `libc-amd64-2.23-0ubuntu10.so`:
+```
+$ ./bowkin-patchelf.py /example/challenge libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so
+Copy libcs/ubuntu/xenial/ld-amd64-2.23-0ubuntu10.so, libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so and libcs/ubuntu/xenial/libc-dbg-amd64-2.23-0ubuntu10.so to /example? (y/[N]) y
+Copy /example/challenge to /example/challenge-2.23-0ubuntu10 and patch the latter? (y/[N]) y
+warning: working around a Linux kernel bug by creating a hole of 2093056 bytes in ‘/example/challenge-2.23-0ubuntu10’
+Done.
+```
+Annnnd, that's it! `bowkin` patched `challenge` to `challenge-2.23-0ubuntu10` and copied the necessary files (the libc to use, its dynamic loader, the debug symbols) to the same directory of the binary:
+```
+$ ls
+challenge  challenge-2.23-0ubuntu10  ld-amd64-2.23-0ubuntu10.so  libc-2.23.so  libc-amd64-2.23-0ubuntu10.so  libc.so.6
+```
+Let's test it:
+```
+$ ./challenge-2.23-0ubuntu10
+2.23
+```
+The patched binary works flawlessly also with `pwntools`'s `gdb.attach()` and `gdb.debug()`:
+```python
+$ cat expl.py
 #!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 from pwn import *
 
-# gdb.debug() was patched during container build to start gdb with chroot as wrapper
+context(arch="amd64", os="linux")
 
-argv = ['/home/share/test']  # put your binary in a /home subdirectory and specify the full path
+binary = ELF("./challenge-2.23-0ubuntu10")
 
-io = gdb.debug(args=argv, gdbscript='''\
-    continue
-''')
+io = gdb.debug(
+    args=[binary.path],
+    terminal=["tmux", "new-window"],
+    gdbscript="""\
+        b main
+        continue
+    """,
+)
+
 io.interactive()
-root@1ec1293f9fda:/home/share# tmux
-root@1ec1293f9fda:/home/share# python2 ./expl.py
-[+] Starting local process '/usr/bin/gdbserver': pid 72
-[*] running in new terminal: /usr/bin/gdb -q  "/home/share/test" -x "/tmp/pwnkJ_XOg.gdb"
+```
+```
+$ python ./expl.py
+[*] '/example/challenge-2.23-0ubuntu10'
+    Arch:     amd64-64-little
+    RELRO:    Full RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      PIE enabled
+[+] Starting local process '/usr/bin/gdbserver': pid 9852
+[*] running in new terminal: /usr/bin/gdb -q  "/example/challenge-2.23-0ubuntu10" -x "/tmp/pwnuZ8Iad.gdb"
 [*] Switching to interactive mode
-Remote debugging from host 127.0.0.1
-2.19
+```
+...in another tmux window...
+```
+Breakpoint 1, 0x000055f4ad88f69e in main ()
+gef➤  vmmap
+Start              End                Offset             Perm Path
+0x000055f4ad88f000 0x000055f4ad890000 0x0000000000000000 r-x /example/challenge-2.23-0ubuntu10
+0x000055f4ada8f000 0x000055f4ada90000 0x0000000000000000 r-- /example/challenge-2.23-0ubuntu10
+0x000055f4ada90000 0x000055f4ada91000 0x0000000000001000 rw- /example/challenge-2.23-0ubuntu10
+0x000055f4ada91000 0x000055f4ada93000 0x0000000000202000 rw- /example/challenge-2.23-0ubuntu10
+0x00007ff879d07000 0x00007ff879ec7000 0x0000000000000000 r-x /example/libc-amd64-2.23-0ubuntu10.so
+0x00007ff879ec7000 0x00007ff87a0c7000 0x00000000001c0000 --- /example/libc-amd64-2.23-0ubuntu10.so
+0x00007ff87a0c7000 0x00007ff87a0cb000 0x00000000001c0000 r-- /example/libc-amd64-2.23-0ubuntu10.so
+0x00007ff87a0cb000 0x00007ff87a0cd000 0x00000000001c4000 rw- /example/libc-amd64-2.23-0ubuntu10.so
+0x00007ff87a0cd000 0x00007ff87a0d1000 0x0000000000000000 rw-
+0x00007ff87a0d1000 0x00007ff87a0f7000 0x0000000000000000 r-x /example/ld-amd64-2.23-0ubuntu10.so
+0x00007ff87a2f3000 0x00007ff87a2f6000 0x0000000000000000 rw-
+0x00007ff87a2f6000 0x00007ff87a2f7000 0x0000000000025000 r-- /example/ld-amd64-2.23-0ubuntu10.so
+0x00007ff87a2f7000 0x00007ff87a2f8000 0x0000000000026000 rw- /example/ld-amd64-2.23-0ubuntu10.so
+0x00007ff87a2f8000 0x00007ff87a2f9000 0x0000000000000000 rw-
+0x00007ffe8d97f000 0x00007ffe8d9a0000 0x0000000000000000 rw- [stack]
+0x00007ffe8d9c0000 0x00007ffe8d9c3000 0x0000000000000000 r-- [vvar]
+0x00007ffe8d9c3000 0x00007ffe8d9c5000 0x0000000000000000 r-x [vdso]
+0xffffffffff600000 0xffffffffff601000 0x0000000000000000 r-x [vsyscall]
+gef➤  c
+Continuing.
+```
+...back to the first tmux window...
+```
+2.23
 
 Child exited with status 0
+[*] Process '/usr/bin/gdbserver' stopped with exit code 0 (pid 9856)
 [*] Got EOF while reading in interactive
 ```
