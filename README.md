@@ -9,37 +9,41 @@ $ pip3 install -r requirements.txt
 ```
 
 ## Usage
-Suppose you're pwning a CTF challenge, for which you were given a binary and the libc used in remote:
-```
+Suppose you want to pwn a CTF challenge, for which you are given a binary and the libc used in remote by the orgs:
+```bash
 $ ls
 challenge  libc.so.6
 ```
-```
+```bash
 $ file ./challenge
 challenge: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=35bf0d5549463ce1bf1c7040060ee9e70f6a5f98, not stripped
+```
+```bash
 $ strings ./libc.so.6 | grep ubuntu
 GNU C Library (Ubuntu GLIBC 2.23-0ubuntu10) stable release version 2.23, by Roland McGrath et al.
 <https://bugs.launchpad.net/ubuntu/+source/glibc/+bugs>.
 ```
-For the sake of example, the binary just [prints the version of libc it uses during execution](https://sourceware.org/glibc/wiki/FAQ#How_can_I_find_out_which_version_of_glibc_I_am_using_in_the_moment.3F):
-```
-$ ./challenge
-2.27
-```
-which is the version of the libc used by my system (Ubuntu 18.04) at the time of writing.
-```
+For the sake of example, `challenge` just [prints the version of libc it uses during execution](https://sourceware.org/glibc/wiki/FAQ#How_can_I_find_out_which_version_of_glibc_I_am_using_in_the_moment.3F),
+```bash
 $ ldd ./challenge
         linux-vdso.so.1 (0x00007ffdb0bfe000)
         libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f0fc82c9000)
         /lib64/ld-linux-x86-64.so.2 (0x00007f0fc88bc000)
+```
+```bash
 $ strings /lib/x86_64-linux-gnu/libc.so.6 | grep ubuntu
 GNU C Library (Ubuntu GLIBC 2.27-3ubuntu1) stable release version 2.27.
 <https://bugs.launchpad.net/ubuntu/+source/glibc/+bugs>.
 ```
-
-So, let's use `bowkin` to make the binary use the libc provided for the challenge.
-1. First, identify the library:
+```bash
+$ ./challenge
+2.27
 ```
+which is the version used by Ubuntu 18.04 at the time of writing.
+
+Let's use `bowkin` to force the binary to use the libc provided for the challenge.
+1. First, identify the library:
+```bash
 $ ./bowkin.py identify /example/libc.so.6
 {
     "architecture": "amd64",
@@ -50,27 +54,33 @@ $ ./bowkin.py identify /example/libc.so.6
     "version": "2.23-0ubuntu10"
 }
 ```
-It's a match!
-
-2. Second, patch the binary to use `libc-amd64-2.23-0ubuntu10.so`:
-```
+2. Then, patch the binary to use `libc-amd64-2.23-0ubuntu10.so`:
+```bash
 $ ./bowkin-patchelf.py /example/challenge libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so
-Copy libcs/ubuntu/xenial/ld-amd64-2.23-0ubuntu10.so, libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so and libcs/ubuntu/xenial/libc-dbg-amd64-2.23-0ubuntu10.so to /example? (y/[N]) y
-Copy /example/challenge to /example/challenge-2.23-0ubuntu10 and patch the latter? (y/[N]) y
+Copy:
+- libcs/ubuntu/xenial/ld-amd64-2.23-0ubuntu10.so
+- libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so
+- libcs/ubuntu/xenial/libc-dbg-amd64-2.23-0ubuntu10.so
+to /example/libs? (y/[N]) y
+
+Copy:
+- /example/challenge
+to /example/challenge-2.23-0ubuntu10 and patch the latter? (y/[N]) y
 warning: working around a Linux kernel bug by creating a hole of 2093056 bytes in ‘/example/challenge-2.23-0ubuntu10’
-Done.
 ```
-Annnnd, that's it! `bowkin` patched `challenge` to `challenge-2.23-0ubuntu10` and copied the necessary files (the libc to use, its dynamic loader, the debug symbols) to the same directory of the binary:
-```
+Annnnd, that's it! `bowkin` created the patched binary `challenge-2.23-0ubuntu10` and copied the necessary files (the libc to use, its dynamic loader, the debug symbols) to the same directory of the binary:
+```bash
 $ ls
-challenge  challenge-2.23-0ubuntu10  ld-amd64-2.23-0ubuntu10.so  libc-2.23.so  libc-amd64-2.23-0ubuntu10.so  libc.so.6
+challenge  challenge-2.23-0ubuntu10  libc.so.6  libs
+$ ls libs/
+ld-amd64-2.23-0ubuntu10.so  libc-2.23.so  libc-amd64-2.23-0ubuntu10.so
 ```
 Let's test it:
 ```
 $ ./challenge-2.23-0ubuntu10
 2.23
 ```
-The patched binary works flawlessly also with `pwntools`'s `gdb.attach()` and `gdb.debug()`:
+The patched binary works flawlessly also with `pwntools`' `gdb.attach()` and `gdb.debug()`:
 ```python
 $ cat expl.py
 #!/usr/bin/env python2
@@ -130,7 +140,7 @@ Start              End                Offset             Perm Path
 gef➤  c
 Continuing.
 ```
-...back to the first tmux window...
+...and back to the first tmux window...
 ```
 2.23
 
