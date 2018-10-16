@@ -69,7 +69,13 @@ os.makedirs(libs_dirpath, exist_ok=True)
 shutil.copy2(ld_filepath, libs_dirpath)
 shutil.copy2(libc_filepath, libs_dirpath)
 libc_dbg_proper_filename = get_libc_dbg_proper_filename(libc_filepath)
-shutil.copy2(libc_dbg_filepath, os.path.join(libs_dirpath, libc_dbg_proper_filename))
+try:
+    shutil.copy2(
+        libc_dbg_filepath, os.path.join(libs_dirpath, libc_dbg_proper_filename)
+    )
+except FileNotFoundError:
+    # TODO
+    pass
 
 print()
 
