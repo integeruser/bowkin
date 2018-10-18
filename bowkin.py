@@ -52,7 +52,7 @@ def rebuild():
         conn.execute("DROP TABLE IF EXISTS libcs")
         conn.execute(
             "CREATE TABLE libcs"
-            "(architecture text, distro text, release text, version text, buildID text, relpath text)"
+            "(relpath text, architecture text, distro text, release text, version text, buildID text)"
         )
 
         for filepath in glob.glob(f"{libcs_dirpath}/**/*", recursive=True):
@@ -60,20 +60,21 @@ def rebuild():
                 # TODO temporary, remove later
                 continue
 
+            # TODO improve
             match = re.match(
-                r"(?:.*)libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so",
+                r"(?:.*)libcs/(?P<relpath>(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so)",
                 filepath,
             )
             if match:
                 conn.execute(
                     "INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)",
                     (
+                        match.group("relpath"),
                         match.group("architecture"),
                         match.group("distro"),
                         match.group("release"),
                         match.group("version"),
                         utils.extract_buildID_from_file(filepath),
-                        os.path.relpath(filepath),
                     ),
                 )
 
