@@ -125,7 +125,7 @@ def rebuild():
         conn.execute(
             "CREATE TABLE libcs"
             "(relpath text, architecture text, distro text, release text, version text, buildID text,"
-                "PRIMARY KEY(version, buildID))"
+            "PRIMARY KEY(version, buildID))"
         )
 
         for filepath in glob.glob(f"{libcs_dirpath}/**/*", recursive=True):
@@ -183,9 +183,15 @@ if __name__ == "__main__":
 
     if args.action == "find":
         for libc in find(args.symbols):
+            libc["realpath"] = os.path.realpath(
+                os.path.join(libcs_dirpath, libc["relpath"])
+            )
             print(json.dumps(libc, sort_keys=True, indent=4))
     elif args.action == "identify":
         for libc in identify(args.libc.name):
+            libc["realpath"] = os.path.realpath(
+                os.path.join(libcs_dirpath, libc["relpath"])
+            )
             print(json.dumps(libc, sort_keys=True, indent=4))
     elif args.action == "patchelf":
         patchelf(args.binary.name, args.libc.name)
