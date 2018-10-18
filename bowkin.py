@@ -29,7 +29,7 @@ def find(symbols):
     with sqlite3.connect(libcs_db_filepath) as conn:
         conn.row_factory = sqlite3.Row
         for libc in conn.execute("SELECT * FROM libcs"):
-            with open(libc["filepath"], "rb") as f:
+            with open(libc["relpath"], "rb") as f:
                 elf = elftools.elf.elffile.ELFFile(f)
                 dynsym_section = elf.get_section_by_name(".dynsym")
 
@@ -49,11 +49,11 @@ def find(symbols):
 
 def rebuild():
     with sqlite3.connect(libcs_db_filepath) as conn:
+        conn.execute("DROP TABLE IF EXISTS libcs")
         conn.execute(
-            "CREATE TABLE IF NOT EXISTS libcs"
-            "(architecture text, distro text, release text, version text, buildID text, filepath text)"
+            "CREATE TABLE libcs"
+            "(architecture text, distro text, release text, version text, buildID text, relpath text)"
         )
-        conn.execute("DELETE FROM libcs")
 
         for filepath in glob.glob(f"{libcs_dirpath}/**/*", recursive=True):
             if "dbg" in filepath:
