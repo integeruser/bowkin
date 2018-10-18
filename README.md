@@ -8,6 +8,13 @@
 $ pip3 install -r requirements.txt
 ```
 
+## Installation
+1. Clone this repository: `git clone https://github.com/integeruser/bowkin.git ~/.bowkin`
+2. Download our curated libc collection from https://drive.google.com/drive/folders/1gCS9m26O3jFSonCF0pnFE8QXqmzv8b25 into `~/.bowkin/libcs`
+3. For convenience, add `bowkin.py` to the `PATH`: `ln -s ~/bowkin.py /usr/local/bin/bowkin`
+4. Rebuild the database: `bowkin rebuild`
+
+
 ## Usage
 Suppose you want to pwn a CTF challenge, for which you are given a binary and the libc used in remote by the orgs:
 ```bash
@@ -39,33 +46,43 @@ GNU C Library (Ubuntu GLIBC 2.27-3ubuntu1) stable release version 2.27.
 $ ./challenge
 2.27
 ```
-which is the version used by Ubuntu 18.04 at the time of writing.
+which in this case is the version used by Ubuntu 18.04 at the time of writing.
 
 Let's use `bowkin` to force the binary to use the libc provided for the challenge.
 1. First, identify the library:
 ```bash
-$ ./bowkin.py identify /example/libc.so.6
+$ bowkin identify /example/libc.so.6
 {
     "architecture": "amd64",
     "buildID": "b5381a457906d279073822a5ceb24c4bfef94ddb",
     "distro": "ubuntu",
-    "filepath": "libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so",
+    "realpath": "/Users/integeruser/Google Drive/libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so",
     "release": "xenial",
+    "relpath": "ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so",
     "version": "2.23-0ubuntu10"
 }
 ```
-2. Then, patch the binary to use `libc-amd64-2.23-0ubuntu10.so`:
+2. Then, patch the binary to use it:
 ```bash
-$ ./bowkin-patchelf.py /example/challenge libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so
+$ bowkin patchelf /example/challenge /example/libc.so.6
 Copy:
-- libcs/ubuntu/xenial/ld-amd64-2.23-0ubuntu10.so
-- libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so
-- libcs/ubuntu/xenial/libc-dbg-amd64-2.23-0ubuntu10.so
-to /example/libs? (y/[N]) y
+- /Users/integeruser/Google Drive/libcs/ubuntu/xenial/ld-amd64-2.23-0ubuntu10.so
+- /Users/integeruser/Google Drive/libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so
+to:
+- /example/libs/
+? (y/[N]) y
+
+Copy:
+- /Users/integeruser/Google Drive/libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so.debug
+to:
+- /example/libs/libc-2.23.so (this particular name is required by GDB to add debug symbols automatically)
+? (y/[N]) y
 
 Copy:
 - /example/challenge
-to /example/challenge-2.23-0ubuntu10 and patch the latter? (y/[N]) y
+to:
+- /example/challenge-2.23-0ubuntu10
+and patch the latter? (y/[N]) y
 warning: working around a Linux kernel bug by creating a hole of 2093056 bytes in ‘/example/challenge-2.23-0ubuntu10’
 ```
 Annnnd, that's it! `bowkin` created the patched binary `challenge-2.23-0ubuntu10` and copied the necessary files (the libc to use, its dynamic loader, the debug symbols) to the same directory of the binary:
@@ -90,6 +107,7 @@ from pwn import *
 context(arch="amd64", os="linux")
 
 binary = ELF("./challenge-2.23-0ubuntu10")
+libc = ELF("libs/libc-amd64-2.23-0ubuntu10.so")
 
 io = gdb.debug(
     args=[binary.path],
@@ -102,7 +120,7 @@ io = gdb.debug(
 
 io.interactive()
 ```
-```
+```bash
 $ python ./expl.py
 [*] '/example/challenge-2.23-0ubuntu10'
     Arch:     amd64-64-little
@@ -110,12 +128,18 @@ $ python ./expl.py
     Stack:    No canary found
     NX:       NX enabled
     PIE:      PIE enabled
+[*] '/example/libs/libc-amd64-2.23-0ubuntu10.so'
+    Arch:     amd64-64-little
+    RELRO:    Partial RELRO
+    Stack:    Canary found
+    NX:       NX enabled
+    PIE:      PIE enabled
 [+] Starting local process '/usr/bin/gdbserver': pid 9852
 [*] running in new terminal: /usr/bin/gdb -q  "/example/challenge-2.23-0ubuntu10" -x "/tmp/pwnuZ8Iad.gdb"
 [*] Switching to interactive mode
 ```
 ...in another tmux window...
-```
+```bash
 Breakpoint 1, 0x000055f4ad88f69e in main ()
 gef➤  vmmap
 Start              End                Offset             Perm Path
@@ -140,8 +164,8 @@ Start              End                Offset             Perm Path
 gef➤  c
 Continuing.
 ```
-...and back to the first tmux window...
-```
+...back to the first tmux window...
+```bash
 2.23
 
 Child exited with status 0
