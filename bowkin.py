@@ -4,9 +4,13 @@ import glob
 import json
 import os
 import re
+import shlex
+import shutil
 import sqlite3
+import subprocess
 import sys
 
+import colorama
 import elftools.elf.elffile
 
 import utils
@@ -45,6 +49,74 @@ def find(symbols):
                 else:
                     matches.append(dict(libc))
     return matches
+
+
+def patchelf(binary_filepath, supplied_libc_filepath):
+    binary_dirpath = os.path.dirname(binary_filepath)
+
+    # identify the supplied libc
+    matches = identify(supplied_libc_filepath)
+    if not matches:
+        utils.abort("The supplied libc is not in the database.")
+    # TODO pick the first for now
+    libc = matches[0]
+
+    # TODO do better
+    libc_filepath = os.path.join(libcs_dirpath, libc["relpath"])
+    libc_dbg_filepath = libc_filepath.replace("libc-", "libc-dbg-")
+    libc_version = libc["version"]
+    ld_filepath = os.path.join(
+        os.path.dirname(libc_filepath),
+        f"ld-{os.path.basename(libc_filepath).replace('libc-', '')}",
+    )
+
+    # TODO check if the loader and symbols exists
+
+    # copy the dynamic loader and the libc to the directory where the binary is located
+    libs_dirpath = os.path.join(binary_dirpath, "libs")
+    if not utils.query_yes_no(
+        "Copy:\n"
+        f"- {colorama.Style.BRIGHT}{ld_filepath}{colorama.Style.RESET_ALL}\n"
+        f"- {colorama.Style.BRIGHT}{libc_filepath}{colorama.Style.RESET_ALL}\n"
+        f"- {colorama.Style.BRIGHT}{libc_dbg_filepath}{colorama.Style.RESET_ALL}\n"
+        f"to {colorama.Style.BRIGHT}{libs_dirpath}{colorama.Style.RESET_ALL}?"
+    ):
+        utils.abort()
+    os.makedirs(libs_dirpath, exist_ok=True)
+    shutil.copy2(ld_filepath, libs_dirpath)
+    shutil.copy2(libc_filepath, libs_dirpath)
+    try:
+        # TODO do better
+        libc_dbg_proper_filename = utils.get_libc_dbg_proper_filename(libc_filepath)
+        shutil.copy2(
+            libc_dbg_filepath, os.path.join(libs_dirpath, libc_dbg_proper_filename)
+        )
+    except (AttributeError, FileNotFoundError):
+        # TODO
+        pass
+
+    print()
+
+    # patch the binary to use the new dynamic loader and libc
+    patched_binary_filepath = f"{binary_filepath}-{libc_version}"
+    if not utils.query_yes_no(
+        "Copy:\n"
+        f"- {colorama.Style.BRIGHT}{binary_filepath}{colorama.Style.RESET_ALL}\n"
+        f"to {colorama.Style.BRIGHT}{patched_binary_filepath}{colorama.Style.RESET_ALL} and patch the latter?"
+    ):
+        utils.abort()
+    shutil.copy2(binary_filepath, patched_binary_filepath)
+
+    ld_basename = os.path.basename(ld_filepath)
+    libc_basename = os.path.basename(libc_filepath)
+    subprocess.run(
+        (
+            f"patchelf --set-interpreter ./libs/{shlex.quote(ld_basename)} {shlex.quote(patched_binary_filepath)}"
+            f" && patchelf --add-needed ./libs/{shlex.quote(libc_basename)} {shlex.quote(patched_binary_filepath)}"
+        ),
+        check=True,
+        shell=True,
+    )
 
 
 def rebuild():
@@ -100,6 +172,10 @@ if __name__ == "__main__":
     identify_parser = subparsers.add_parser("identify")
     identify_parser.add_argument("libc", type=argparse.FileType())
 
+    patchelf_parser = subparsers.add_parser("patchelf")
+    patchelf_parser.add_argument("binary", type=argparse.FileType())
+    patchelf_parser.add_argument("libc", type=argparse.FileType())
+
     rebuild_parser = subparsers.add_parser("rebuild")
 
     args = parser.parse_args()
@@ -110,5 +186,7 @@ if __name__ == "__main__":
     elif args.action == "identify":
         for libc in identify(args.libc.name):
             print(json.dumps(libc, sort_keys=True, indent=4))
+    elif args.action == "patchelf":
+        patchelf(args.binary.name, args.libc.name)
     elif args.action == "rebuild":
         rebuild()
