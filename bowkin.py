@@ -4,6 +4,7 @@ import glob
 import json
 import os
 import re
+import shlex
 import sqlite3
 import subprocess
 import sys
@@ -80,7 +81,9 @@ def rebuild():
 
 
 def extract_buildID_from_file(libc_filepath):
-    output = subprocess.check_output("file {}".format(libc_filepath), shell=True)
+    output = subprocess.check_output(
+        "file {}".format(shlex.quote(libc_filepath)), shell=True
+    )
     output = output.strip().decode("ascii")
     buildID = re.search("BuildID\[sha1\]\=(.*?),", output).group(1)
     return buildID
