@@ -4,12 +4,12 @@ import glob
 import json
 import os
 import re
-import shlex
 import sqlite3
-import subprocess
 import sys
 
 import elftools.elf.elffile
+
+import utils
 
 
 def identify(libc_filepath):
@@ -19,7 +19,7 @@ def identify(libc_filepath):
             dict(libc)
             for libc in conn.execute(
                 "SELECT * FROM libcs where buildID=?",
-                (extract_buildID_from_file(libc_filepath),),
+                (utils.extract_buildID_from_file(libc_filepath),),
             )
         ]
 
@@ -63,7 +63,7 @@ def rebuild():
                 r"(?:.*)libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so",
                 filepath,
             )
-            buildID = extract_buildID_from_file(filepath)
+            buildID = utils.extract_buildID_from_file(filepath)
             conn.execute(
                 "INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)",
                 (
@@ -77,36 +77,18 @@ def rebuild():
             )
 
 
-################################################################################
-
-
-def extract_buildID_from_file(libc_filepath):
-    out = subprocess.check_output(
-        shlex.split("file {}".format(shlex.quote(libc_filepath)))
-    )
-    try:
-        buildID = (
-            re.search(br"BuildID\[sha1\]\=(?P<buildID>[a-z0-9]+)", out)
-            .group("buildID")
-            .decode("ascii")
-        )
-        return buildID
-    except AttributeError:
-        return None
-
-
-def symbol_address_pair(text):
-    symbol, address = text.split("=")
-    offset = int(address, 16) & 0b111111111111
-    return (symbol, offset)
-
-
 # bowkin assumes either the directory `libcs` or a symlink to it can be found
 # in the same directory of this script
 libcs_dirpath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "libcs")
 libcs_db_filepath = os.path.join(libcs_dirpath, "libcs.db")
 
 if __name__ == "__main__":
+
+    def symbol_address_pair(text):
+        symbol, address = text.split("=")
+        offset = int(address, 16) & 0b111111111111
+        return (symbol, offset)
+
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="action")
     subparsers.required = True
