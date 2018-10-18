@@ -29,16 +29,16 @@ def find(symbols):
     with sqlite3.connect(libcs_db_filepath) as conn:
         conn.row_factory = sqlite3.Row
         for libc in conn.execute("SELECT * FROM libcs"):
-            with open(libc["relpath"], "rb") as f:
+            libc_filepath = os.path.join(libcs_dirpath, libc["relpath"])
+            with open(libc_filepath, "rb") as f:
                 elf = elftools.elf.elffile.ELFFile(f)
                 dynsym_section = elf.get_section_by_name(".dynsym")
-
                 for symbol, address in symbols:
+                    offset = int(address, 16) & 0b111111111111
                     try:
-                        libc_sym = dynsym_section.get_symbol_by_name(symbol)[0]
-                        libc_address = libc_sym.entry.st_value & 0b111111111111
-                        if libc_address != address:
-                            # not a match
+                        libc_symbol = dynsym_section.get_symbol_by_name(symbol)[0]
+                        libc_offset = libc_symbol.entry.st_value & 0b111111111111
+                        if libc_offset != offset:
                             break
                     except (IndexError, TypeError):
                         break
@@ -85,19 +85,16 @@ libcs_dirpath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "libcs
 libcs_db_filepath = os.path.join(libcs_dirpath, "libcs.db")
 
 if __name__ == "__main__":
-
-    def symbol_address_pair(text):
-        symbol, address = text.split("=")
-        offset = int(address, 16) & 0b111111111111
-        return (symbol, offset)
-
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="action")
     subparsers.required = True
 
     find_parser = subparsers.add_parser("find")
     find_parser.add_argument(
-        "symbols", type=symbol_address_pair, nargs="+", metavar="symbol=address"
+        "symbols",
+        type=lambda text: text.split("="),
+        nargs="+",
+        metavar="symbol=address",
     )
 
     identify_parser = subparsers.add_parser("identify")
