@@ -129,13 +129,9 @@ def rebuild():
         )
 
         for filepath in glob.glob(f"{libcs_dirpath}/**/*", recursive=True):
-            if "dbg" in filepath:
-                # TODO temporary, remove later
-                continue
-
             # TODO improve
             match = re.match(
-                r"(?:.*)libcs/(?P<relpath>(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so)",
+                r"(?:.*)libcs/(?P<relpath>(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so)$",
                 filepath,
             )
             if match:
