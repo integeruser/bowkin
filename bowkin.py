@@ -12,7 +12,7 @@ import elftools.elf.elffile
 
 
 def identify(libc_filepath):
-    with sqlite3.connect("libcs.db") as conn:
+    with sqlite3.connect(libcs_db_filepath) as conn:
         conn.row_factory = sqlite3.Row
         return [
             dict(libc)
@@ -25,7 +25,7 @@ def identify(libc_filepath):
 
 def find(symbols):
     matches = []
-    with sqlite3.connect("libcs.db") as conn:
+    with sqlite3.connect(libcs_db_filepath) as conn:
         conn.row_factory = sqlite3.Row
         for libc in conn.execute("SELECT * FROM libcs"):
             with open(libc["filepath"], "rb") as f:
@@ -47,7 +47,7 @@ def find(symbols):
 
 
 def rebuild():
-    with sqlite3.connect("libcs.db") as conn:
+    with sqlite3.connect(libcs_db_filepath) as conn:
         conn.execute(
             "CREATE TABLE IF NOT EXISTS libcs"
             "(architecture text, distro text, release text, version text, buildID text, filepath text)"
@@ -55,11 +55,11 @@ def rebuild():
 
         conn.execute("DELETE FROM libcs")
 
-        for filepath in glob.glob("libcs/**/libc*.so", recursive=True):
+        for filepath in glob.glob(f"{libcs_dirpath}/**/libc*.so", recursive=True):
             if "dbg" in os.path.basename(filepath):
                 continue
             m = re.match(
-                r"libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so",
+                r"(?:.*)libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so",
                 filepath,
             )
             buildID = extract_buildID_from_file(filepath)
@@ -92,7 +92,10 @@ def symbol_address_pair(text):
     return (symbol, offset)
 
 
-os.chdir(sys.path[0])
+# bowkin assumes either the directory `libcs` or a symlink to it can be found
+# in the same directory of this script
+libcs_dirpath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "libcs")
+libcs_db_filepath = os.path.join(libcs_dirpath, "libcs.db")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
