@@ -81,9 +81,11 @@ def patchelf(binary_filepath, supplied_libc_filepath):
         "Copy:\n"
         f"- {colorama.Style.BRIGHT}{ld_filepath}{colorama.Style.RESET_ALL}\n"
         f"- {colorama.Style.BRIGHT}{libc_filepath}{colorama.Style.RESET_ALL}\n"
-        f"to {colorama.Style.BRIGHT}{libs_dirpath}{colorama.Style.RESET_ALL}?"
+        "to:\n"
+        f"- {colorama.Style.BRIGHT}{libs_dirpath}{colorama.Style.RESET_ALL}/\n"
+        "?"
     ):
-        utils.abort()
+        utils.abort("Aborted by user.")
     os.makedirs(libs_dirpath, exist_ok=True)
     shutil.copy2(ld_filepath, libs_dirpath)
     shutil.copy2(libc_filepath, libs_dirpath)
@@ -98,7 +100,10 @@ def patchelf(binary_filepath, supplied_libc_filepath):
         if utils.query_yes_no(
             "Copy:\n"
             f"- {colorama.Style.BRIGHT}{libc_dbg_filepath}{colorama.Style.RESET_ALL}\n"
-            f"to {colorama.Style.BRIGHT}{libc_dbg_proper_filepath}{colorama.Style.RESET_ALL}?"
+            "to:\n"
+            f"- {colorama.Style.BRIGHT}{libc_dbg_proper_filepath}{colorama.Style.RESET_ALL}"
+            " (this particular name is required by GDB to add debug symbols automatically)\n"
+            "?"
         ):
             shutil.copy2(libc_dbg_filepath, libc_dbg_proper_filepath)
         print()
@@ -108,9 +113,11 @@ def patchelf(binary_filepath, supplied_libc_filepath):
     if not utils.query_yes_no(
         "Copy:\n"
         f"- {colorama.Style.BRIGHT}{binary_filepath}{colorama.Style.RESET_ALL}\n"
-        f"to {colorama.Style.BRIGHT}{patched_binary_filepath}{colorama.Style.RESET_ALL} and patch the latter?"
+        "to:\n"
+        f"- {colorama.Style.BRIGHT}{patched_binary_filepath}{colorama.Style.RESET_ALL}\n"
+        "and patch the latter?"
     ):
-        utils.abort()
+        utils.abort("Aborted by user.")
     shutil.copy2(binary_filepath, patched_binary_filepath)
 
     ld_basename = os.path.basename(ld_filepath)

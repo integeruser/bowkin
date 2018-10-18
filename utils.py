@@ -7,9 +7,7 @@ import colorama
 import elftools.elf.elffile
 
 
-def abort(message=None):
-    if not message:
-        message = "Aborted."
+def abort(message):
     print(
         f"{colorama.Style.BRIGHT}{colorama.Fore.RED}{message}{colorama.Style.RESET_ALL}"
     )
