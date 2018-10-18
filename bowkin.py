@@ -81,12 +81,18 @@ def rebuild():
 
 
 def extract_buildID_from_file(libc_filepath):
-    output = subprocess.check_output(
-        "file {}".format(shlex.quote(libc_filepath)), shell=True
+    out = subprocess.check_output(
+        shlex.split("file {}".format(shlex.quote(libc_filepath)))
     )
-    output = output.strip().decode("ascii")
-    buildID = re.search("BuildID\[sha1\]\=(.*?),", output).group(1)
-    return buildID
+    try:
+        buildID = (
+            re.search(br"BuildID\[sha1\]\=(?P<buildID>[a-z0-9]+)", out)
+            .group("buildID")
+            .decode("ascii")
+        )
+        return buildID
+    except AttributeError:
+        return None
 
 
 def symbol_address_pair(text):
