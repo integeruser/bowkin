@@ -53,28 +53,29 @@ def rebuild():
             "CREATE TABLE IF NOT EXISTS libcs"
             "(architecture text, distro text, release text, version text, buildID text, filepath text)"
         )
-
         conn.execute("DELETE FROM libcs")
 
-        for filepath in glob.glob(f"{libcs_dirpath}/**/libc*.so", recursive=True):
-            if "dbg" in os.path.basename(filepath):
+        for filepath in glob.glob(f"{libcs_dirpath}/**/*", recursive=True):
+            if "dbg" in filepath:
+                # TODO temporary, remove later
                 continue
-            m = re.match(
+
+            match = re.match(
                 r"(?:.*)libcs/(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so",
                 filepath,
             )
-            buildID = utils.extract_buildID_from_file(filepath)
-            conn.execute(
-                "INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)",
-                (
-                    m.group("architecture"),
-                    m.group("distro"),
-                    m.group("release"),
-                    m.group("version"),
-                    buildID,
-                    filepath,
-                ),
-            )
+            if match:
+                conn.execute(
+                    "INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        match.group("architecture"),
+                        match.group("distro"),
+                        match.group("release"),
+                        match.group("version"),
+                        utils.extract_buildID_from_file(filepath),
+                        os.path.relpath(filepath),
+                    ),
+                )
 
 
 # bowkin assumes either the directory `libcs` or a symlink to it can be found
