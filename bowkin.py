@@ -155,7 +155,9 @@ def rebuild():
 # bowkin assumes either the directory `libcs` or a symlink to it can be found
 # in the same directory of this script
 libcs_dirpath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "libcs")
-libcs_db_filepath = os.path.join(libcs_dirpath, "libcs.db")
+libcs_db_filepath = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), "libcs.db"
+)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
