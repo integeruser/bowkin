@@ -3,6 +3,7 @@ import re
 import shlex
 import subprocess
 
+import colorama
 import elftools.elf.elffile
 
 
