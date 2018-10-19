@@ -11,7 +11,7 @@ $ pip3 install -r requirements.txt
 ## Installation
 1. Clone this repository: `git clone https://github.com/integeruser/bowkin.git ~/.bowkin`
 2. Download our curated libc collection from https://drive.google.com/drive/folders/1PWx8QSa2h6qmplL_s0ZCzuSLKKIEN4tt into `~/.bowkin/libcs`
-3. For convenience, add `bowkin.py` to the `PATH`: `ln -s ~/bowkin.py /usr/local/bin/bowkin`
+3. For convenience, add `bowkin.py` to the `PATH` (e.g. `ln -s ~/bowkin/bowkin.py /usr/local/bin/bowkin`)
 4. Rebuild the database: `bowkin rebuild`
 
 
