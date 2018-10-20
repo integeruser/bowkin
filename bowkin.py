@@ -161,6 +161,11 @@ def rebuild():
                 )
 
 
+def dump(libc):
+    libc["realpath"] = os.path.realpath(os.path.join(libcs_dirpath, libc["relpath"]))
+    print(json.dumps(libc, sort_keys=True, indent=4))
+
+
 # bowkin assumes either the directory `libcs` or a symlink to it can be found
 # in the same directory of this script
 libcs_dirpath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "libcs")
@@ -202,18 +207,11 @@ if __name__ == "__main__":
 
     if args.action == "find":
         for libc in find(args.symbols):
-            libc["realpath"] = os.path.realpath(
-                os.path.join(libcs_dirpath, libc["relpath"])
-            )
-            print(json.dumps(libc, sort_keys=True, indent=4))
+            dump(libc)
     elif args.action == "identify":
         libcs_identified = identify(args.libc.name)
         for libc in libcs_identified:
-            libc["realpath"] = os.path.realpath(
-                os.path.join(libcs_dirpath, libc["relpath"])
-            )
-            print(json.dumps(libc, sort_keys=True, indent=4))
-
+            dump(libc)
         if not libcs_identified:
             utils.abort("The supplied libc is not in the database.")
     elif args.action == "patchelf":

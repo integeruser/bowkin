@@ -39,3 +39,8 @@ def get_libc_dbg_proper_filename(libc_filepath):
         data = elf.get_section_by_name(".gnu_debuglink").data()
         libc_dbg_filename = data[: data.index(b"\0")].decode("ascii")
         return libc_dbg_filename
+
+
+def dump(libc):
+    libc["realpath"] = os.path.realpath(os.path.join(libcs_dirpath, libc["relpath"]))
+    print(json.dumps(libc, sort_keys=True, indent=4))
