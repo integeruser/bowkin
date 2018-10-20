@@ -171,9 +171,12 @@ libcs_db_filepath = os.path.join(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="action")
-    subparsers.required = True
+    # subparsers.required = True
 
-    find_parser = subparsers.add_parser("find")
+    find_parser = subparsers.add_parser(
+        "find",
+        help="given a list of symbol=address will give you the list of libcs that respect the constraint",
+    )
     find_parser.add_argument(
         "symbols",
         type=lambda text: text.split("="),
@@ -181,10 +184,15 @@ if __name__ == "__main__":
         metavar="symbol=address",
     )
 
-    identify_parser = subparsers.add_parser("identify")
+    identify_parser = subparsers.add_parser(
+        "identify", help="if the given libc is present print informations about that"
+    )
     identify_parser.add_argument("libc", type=argparse.FileType())
 
-    patchelf_parser = subparsers.add_parser("patchelf")
+    patchelf_parser = subparsers.add_parser(
+        "patchelf",
+        help="if the given libc is present in the database patch the binary to use the correct ",
+    )
     patchelf_parser.add_argument("binary", type=argparse.FileType())
     patchelf_parser.add_argument("libc", type=argparse.FileType())
 
@@ -199,12 +207,18 @@ if __name__ == "__main__":
             )
             print(json.dumps(libc, sort_keys=True, indent=4))
     elif args.action == "identify":
-        for libc in identify(args.libc.name):
+        libcs_identified = identify(args.libc.name)
+        for libc in libcs_identified:
             libc["realpath"] = os.path.realpath(
                 os.path.join(libcs_dirpath, libc["relpath"])
             )
             print(json.dumps(libc, sort_keys=True, indent=4))
+
+        if not libcs_identified:
+            utils.abort("The supplied libc is not in the database.")
     elif args.action == "patchelf":
         patchelf(args.binary.name, args.libc.name)
     elif args.action == "rebuild":
         rebuild()
+    else:
+        parser.print_help()
