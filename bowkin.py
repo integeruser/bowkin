@@ -176,11 +176,9 @@ libcs_db_filepath = os.path.join(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="action")
-    # subparsers.required = True
 
     find_parser = subparsers.add_parser(
-        "find",
-        help="given a list of symbol=address will give you the list of libcs that respect the constraint",
+        "find", help="Find libcs that satisfy symbol=address"
     )
     find_parser.add_argument(
         "symbols",
@@ -190,13 +188,12 @@ if __name__ == "__main__":
     )
 
     identify_parser = subparsers.add_parser(
-        "identify", help="if the given libc is present print informations about that"
+        "identify", help="Print info about the supplied libc"
     )
     identify_parser.add_argument("libc", type=argparse.FileType())
 
     patchelf_parser = subparsers.add_parser(
-        "patchelf",
-        help="if the given libc is present in the database patch the binary to use the correct ",
+        "patchelf", help="Patch the supplied binary to use a specific libc"
     )
     patchelf_parser.add_argument("binary", type=argparse.FileType())
     patchelf_parser.add_argument("libc", type=argparse.FileType())
