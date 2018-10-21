@@ -36,7 +36,7 @@ def extract_ld_and_libc(package_filepath, match):
 
         libc_filepath = (
             subprocess.run(
-                f"realpath $(find . -name 'libc.so.6')",
+                f"realpath $(find . -name 'libc-*.so')",
                 cwd=tmp_dirpath,
                 shell=True,
                 check=True,
@@ -46,10 +46,20 @@ def extract_ld_and_libc(package_filepath, match):
             .strip()
         )
         if libc_filepath:
-            print(
-                f"Found libc: {colorama.Style.BRIGHT}{libc_filepath}{colorama.Style.RESET_ALL}"
+            debug_symbols = "dbg" in package_filename or "debug" in os.path.relpath(
+                libc_filepath, tmp_dirpath
             )
+            if debug_symbols:
+                print(
+                    f"Found debug symbols: {colorama.Style.BRIGHT}{libc_filepath}{colorama.Style.RESET_ALL}"
+                )
+            else:
+                print(
+                    f"Found libc: {colorama.Style.BRIGHT}{libc_filepath}{colorama.Style.RESET_ALL}"
+                )
             proper_libc_filename = f"libc-{libc_arch}-{libc_version}.so"
+            if debug_symbols:
+                proper_libc_filename += ".debug"
             proper_libc_filepath = os.path.join(
                 bowkin.libcs_dirpath, proper_libc_filename
             )
@@ -70,10 +80,20 @@ def extract_ld_and_libc(package_filepath, match):
             .strip()
         )
         if ld_filepath:
-            print(
-                f"Found ld: {colorama.Style.BRIGHT}{ld_filepath}{colorama.Style.RESET_ALL}"
+            debug_symbols = "dbg" in package_filename or "debug" in os.path.relpath(
+                ld_filepath, tmp_dirpath
             )
+            if debug_symbols:
+                print(
+                    f"Found debug symbols: {colorama.Style.BRIGHT}{ld_filepath}{colorama.Style.RESET_ALL}"
+                )
+            else:
+                print(
+                    f"Found libc: {colorama.Style.BRIGHT}{ld_filepath}{colorama.Style.RESET_ALL}"
+                )
             proper_ld_filename = f"ld-{libc_arch}-{libc_version}.so"
+            if debug_symbols:
+                proper_ld_filename += ".debug"
             proper_ld_filepath = os.path.join(bowkin.libcs_dirpath, proper_ld_filename)
             if utils.query_yes_no(
                 f"Copy it to {colorama.Style.BRIGHT}{proper_ld_filepath}{colorama.Style.RESET_ALL}?"
@@ -86,7 +106,7 @@ def add(package_filepath):
 
     # libc6_2.23-0ubuntu10_amd64.deb
     match = re.match(
-        "libc6_(?P<version>\d.\d+-\dubuntu\d+)_(?P<arch>i386|amd64).deb",
+        "libc6(?:-dbg)_(?P<version>\d.\d+-\dubuntu\d+)_(?P<arch>i386|amd64).deb",
         package_filename,
     )
     if match:
@@ -95,7 +115,7 @@ def add(package_filepath):
 
     # libc6_2.24-11+deb9u3_amd64.deb
     match = re.match(
-        "libc6_(?P<version>\d.\d+-\d+\+deb\du\d)_(?P<arch>i386|amd64).deb",
+        "libc6(?:-dbg)_(?P<version>\d.\d+-\d+\+deb\du\d)_(?P<arch>i386|amd64).deb",
         package_filename,
     )
     if match:
