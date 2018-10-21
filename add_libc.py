@@ -59,11 +59,11 @@ def extract_ld_and_libc(package_filepath, match):
 
         proper_libc_filename = f"libc-{libc_arch}-{libc_version}.so"
         proper_libc_filepath = os.path.join(bowkin.libcs_dirpath, proper_libc_filename)
-        shutil.copy2(package_filepath, proper_libc_filepath)
+        shutil.copy2(libc_filepath, proper_libc_filepath)
 
         proper_ld_filename = f"ld-{libc_arch}-{libc_version}.so"
         proper_ld_filepath = os.path.join(bowkin.libcs_dirpath, proper_ld_filename)
-        shutil.copy2(package_filepath, proper_ld_filepath)
+        shutil.copy2(ld_filepath, proper_ld_filepath)
 
         print(
             "Added:\n"
