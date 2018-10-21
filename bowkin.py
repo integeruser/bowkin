@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import glob
 import json
 import os
 import re
@@ -132,35 +131,6 @@ def patchelf(binary_filepath, supplied_libc_filepath):
     )
 
 
-def rebuild():
-    with sqlite3.connect(libcs_db_filepath) as conn:
-        conn.execute("DROP TABLE IF EXISTS libcs")
-        conn.execute(
-            "CREATE TABLE libcs"
-            "(relpath text, architecture text, distro text, release text, version text, buildID text,"
-            "PRIMARY KEY(version, buildID))"
-        )
-
-        for filepath in glob.glob(f"{libcs_dirpath}/**/*", recursive=True):
-            # TODO improve
-            match = re.match(
-                r"(?:.*)libcs/(?P<relpath>(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so)$",
-                filepath,
-            )
-            if match:
-                conn.execute(
-                    "INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)",
-                    (
-                        match.group("relpath"),
-                        match.group("architecture"),
-                        match.group("distro"),
-                        match.group("release"),
-                        match.group("version"),
-                        utils.extract_buildID_from_file(filepath),
-                    ),
-                )
-
-
 def dump(libc):
     libc["realpath"] = os.path.realpath(os.path.join(libcs_dirpath, libc["relpath"]))
     print(json.dumps(libc, sort_keys=True, indent=4))
@@ -198,8 +168,6 @@ if __name__ == "__main__":
     patchelf_parser.add_argument("binary", type=argparse.FileType())
     patchelf_parser.add_argument("libc", type=argparse.FileType())
 
-    rebuild_parser = subparsers.add_parser("rebuild")
-
     args = parser.parse_args()
 
     if args.action == "find":
@@ -213,7 +181,5 @@ if __name__ == "__main__":
             utils.abort("The supplied libc is not in the database.")
     elif args.action == "patchelf":
         patchelf(args.binary.name, args.libc.name)
-    elif args.action == "rebuild":
-        rebuild()
     else:
         parser.print_help()

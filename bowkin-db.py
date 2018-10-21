@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import argparse
+import glob
 import os
 import re
 import shlex
 import shutil
+import sqlite3
 import subprocess
 import tempfile
 
@@ -132,6 +134,35 @@ def add(package_filepath):
         return
 
 
+def rebuild():
+    with sqlite3.connect(bowkin.libcs_db_filepath) as conn:
+        conn.execute("DROP TABLE IF EXISTS libcs")
+        conn.execute(
+            "CREATE TABLE libcs"
+            "(relpath text, architecture text, distro text, release text, version text, buildID text,"
+            "PRIMARY KEY(version, buildID))"
+        )
+
+        for filepath in glob.glob(f"{bowkin.libcs_dirpath}/**/*", recursive=True):
+            # TODO improve
+            match = re.match(
+                r"(?:.*)libcs/(?P<relpath>(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so)$",
+                filepath,
+            )
+            if match:
+                conn.execute(
+                    "INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        match.group("relpath"),
+                        match.group("architecture"),
+                        match.group("distro"),
+                        match.group("release"),
+                        match.group("version"),
+                        utils.extract_buildID_from_file(filepath),
+                    ),
+                )
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="action")
@@ -140,7 +171,11 @@ if __name__ == "__main__":
     add_parser = subparsers.add_parser("add")
     add_parser.add_argument("package", type=argparse.FileType())
 
+    rebuild_parser = subparsers.add_parser("rebuild")
+
     args = parser.parse_args()
 
     if args.action == "add":
         add(args.package.name)
+    elif args.action == "rebuild":
+        rebuild()
