@@ -10,9 +10,13 @@ import tempfile
 import colorama
 
 import bowkin
+import utils
 
 
 def extract_ld_and_libc(package_filepath, match):
+    libc_arch = match.group("arch")
+    libc_version = match.group("version")
+
     with tempfile.TemporaryDirectory() as tmp_dirpath:
         shutil.copy2(package_filepath, tmp_dirpath)
 
@@ -41,6 +45,18 @@ def extract_ld_and_libc(package_filepath, match):
             .stdout.decode("ascii")
             .strip()
         )
+        if libc_filepath:
+            print(
+                f"Found libc: {colorama.Style.BRIGHT}{libc_filepath}{colorama.Style.RESET_ALL}"
+            )
+            proper_libc_filename = f"libc-{libc_arch}-{libc_version}.so"
+            proper_libc_filepath = os.path.join(
+                bowkin.libcs_dirpath, proper_libc_filename
+            )
+            if utils.query_yes_no(
+                f"Copy it to {colorama.Style.BRIGHT}{proper_libc_filepath}{colorama.Style.RESET_ALL}?"
+            ):
+                shutil.copy2(libc_filepath, proper_libc_filepath)
 
         ld_filepath = (
             subprocess.run(
@@ -53,23 +69,16 @@ def extract_ld_and_libc(package_filepath, match):
             .stdout.decode("ascii")
             .strip()
         )
-
-        libc_arch = match.group("arch")
-        libc_version = match.group("version")
-
-        proper_libc_filename = f"libc-{libc_arch}-{libc_version}.so"
-        proper_libc_filepath = os.path.join(bowkin.libcs_dirpath, proper_libc_filename)
-        shutil.copy2(libc_filepath, proper_libc_filepath)
-
-        proper_ld_filename = f"ld-{libc_arch}-{libc_version}.so"
-        proper_ld_filepath = os.path.join(bowkin.libcs_dirpath, proper_ld_filename)
-        shutil.copy2(ld_filepath, proper_ld_filepath)
-
-        print(
-            "Added:\n"
-            f"- {colorama.Style.BRIGHT}{proper_libc_filepath}{colorama.Style.RESET_ALL}\n"
-            f"- {colorama.Style.BRIGHT}{proper_ld_filepath}{colorama.Style.RESET_ALL}"
-        )
+        if ld_filepath:
+            print(
+                f"Found ld: {colorama.Style.BRIGHT}{ld_filepath}{colorama.Style.RESET_ALL}"
+            )
+            proper_ld_filename = f"ld-{libc_arch}-{libc_version}.so"
+            proper_ld_filepath = os.path.join(bowkin.libcs_dirpath, proper_ld_filename)
+            if utils.query_yes_no(
+                f"Copy it to {colorama.Style.BRIGHT}{proper_ld_filepath}{colorama.Style.RESET_ALL}?"
+            ):
+                shutil.copy2(ld_filepath, proper_ld_filepath)
 
 
 def add(package_filepath):
