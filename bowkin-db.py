@@ -72,12 +72,7 @@ def extract_ld_and_libc(package_filepath, match):
         )
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("package", type=argparse.FileType())
-    args = parser.parse_args()
-
-    package_filepath = args.package.name
+def add(package_filepath):
     package_filename = os.path.basename(package_filepath)
 
     # libc6_2.23-0ubuntu10_amd64.deb
@@ -87,7 +82,7 @@ if __name__ == "__main__":
     )
     if match:
         extract_ld_and_libc(package_filepath, match)
-        raise SystemExit
+        return
 
     # libc6_2.24-11+deb9u3_amd64.deb
     match = re.match(
@@ -96,7 +91,7 @@ if __name__ == "__main__":
     )
     if match:
         extract_ld_and_libc(package_filepath, match)
-        raise SystemExit
+        return
 
     # glibc-2.27-2-x86_64.pkg.tar.xz
     match = re.match(
@@ -105,4 +100,18 @@ if __name__ == "__main__":
     )
     if match:
         extract_ld_and_libc(package_filepath, match)
-        raise SystemExit
+        return
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="action")
+    subparsers.required = True
+
+    add_parser = subparsers.add_parser("add")
+    add_parser.add_argument("package", type=argparse.FileType())
+
+    args = parser.parse_args()
+
+    if args.action == "add":
+        add(args.package.name)
