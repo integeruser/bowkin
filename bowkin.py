@@ -50,7 +50,7 @@ def find(symbols):
     return matches
 
 
-def patchelf(binary_filepath, supplied_libc_filepath):
+def patch(binary_filepath, supplied_libc_filepath):
     binary_dirpath = os.path.dirname(binary_filepath)
 
     # identify the supplied libc
@@ -162,11 +162,11 @@ if __name__ == "__main__":
     )
     identify_parser.add_argument("libc", type=argparse.FileType())
 
-    patchelf_parser = subparsers.add_parser(
-        "patchelf", help="Patch the supplied binary to use a specific libc"
+    patch_parser = subparsers.add_parser(
+        "patch", help="Patch the supplied binary to use a specific libc"
     )
-    patchelf_parser.add_argument("binary", type=argparse.FileType())
-    patchelf_parser.add_argument("libc", type=argparse.FileType())
+    patch_parser.add_argument("binary", type=argparse.FileType())
+    patch_parser.add_argument("libc", type=argparse.FileType())
 
     args = parser.parse_args()
 
@@ -179,7 +179,7 @@ if __name__ == "__main__":
             dump(libc)
         if not libcs_identified:
             utils.abort("The supplied libc is not in the database.")
-    elif args.action == "patchelf":
-        patchelf(args.binary.name, args.libc.name)
+    elif args.action == "patch":
+        patch(args.binary.name, args.libc.name)
     else:
         parser.print_help()

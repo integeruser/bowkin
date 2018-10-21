@@ -64,7 +64,7 @@ $ bowkin identify /example/libc.so.6
 ```
 2. Then, patch the binary to use it:
 ```bash
-$ bowkin patchelf /example/challenge /example/libc.so.6
+$ bowkin patch /example/challenge /example/libc.so.6
 Copy:
 - /Users/integeruser/Google Drive/libcs/ubuntu/xenial/ld-amd64-2.23-0ubuntu10.so
 - /Users/integeruser/Google Drive/libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so
