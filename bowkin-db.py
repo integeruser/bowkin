@@ -154,12 +154,12 @@ def bootstrap():
     distro_dirpath = os.path.join(bowkin.libcs_dirpath, "ubuntu")
     os.makedirs(distro_dirpath, exist_ok=True)
     for release in ("trusty", "xenial", "artful", "bionic"):
-        release_dirpath = os.path.join(distro_dirpath, distro)
+        release_dirpath = os.path.join(distro_dirpath, release)
         os.makedirs(release_dirpath, exist_ok=True)
         for arch in ("i386", "amd64"):
             for package in ("libc6", "libc6-dbg"):
                 print()
-                url = f"https://packages.ubuntu.com/{distro}/{arch}/{package}/download"
+                url = f"https://packages.ubuntu.com/{release}/{arch}/{package}/download"
                 package_url = extract_package_url_ubuntu_debian(url)
                 if not package_url:
                     continue
@@ -171,12 +171,12 @@ def bootstrap():
     distro_dirpath = os.path.join(bowkin.libcs_dirpath, "debian")
     os.makedirs(distro_dirpath, exist_ok=True)
     for release in ("squeeze", "wheezy", "jessie", "stretch"):
-        release_dirpath = os.path.join(distro_dirpath, distro)
+        release_dirpath = os.path.join(distro_dirpath, release)
         os.makedirs(release_dirpath, exist_ok=True)
         for arch in ("i386", "amd64"):
             for package in ("libc6", "libc6-dbg"):
                 print()
-                url = f"https://packages.debian.org/{distro}/{arch}/{package}/download"
+                url = f"https://packages.debian.org/{release}/{arch}/{package}/download"
                 package_url = extract_package_url_ubuntu_debian(url)
                 if not package_url:
                     continue
