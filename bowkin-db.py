@@ -108,25 +108,16 @@ def extract(package_filepath, match, ask_confirmation, dest_dirpath):
             debug_symbols = "dbg" in package_filename or "debug" in os.path.relpath(
                 ld_filepath, tmp_dirpath
             )
-            if debug_symbols:
-                print(
-                    f"Found debug symbols: {colorama.Style.BRIGHT}{ld_filepath}{colorama.Style.RESET_ALL}"
-                )
-            else:
-                print(
-                    f"Found ld: {colorama.Style.BRIGHT}{ld_filepath}{colorama.Style.RESET_ALL}"
-                )
-            proper_ld_filename = f"ld-{libc_arch}-{libc_version}.so"
-            if debug_symbols:
-                proper_ld_filename += ".debug"
-            proper_ld_filepath = os.path.join(dest_dirpath, proper_ld_filename)
-            if not ask_confirmation or utils.query_yes_no(
-                f"Copy it to {colorama.Style.BRIGHT}{proper_ld_filepath}{colorama.Style.RESET_ALL}?"
-            ):
-                shutil.copy2(ld_filepath, proper_ld_filepath)
-                print(
-                    f"Saved: {colorama.Style.BRIGHT}{proper_ld_filepath}{colorama.Style.RESET_ALL}"
-                )
+            if not debug_symbols:
+                proper_ld_filename = f"ld-{libc_arch}-{libc_version}.so"
+                proper_ld_filepath = os.path.join(dest_dirpath, proper_ld_filename)
+                if not ask_confirmation or utils.query_yes_no(
+                    f"Copy it to {colorama.Style.BRIGHT}{proper_ld_filepath}{colorama.Style.RESET_ALL}?"
+                ):
+                    shutil.copy2(ld_filepath, proper_ld_filepath)
+                    print(
+                        f"Saved: {colorama.Style.BRIGHT}{proper_ld_filepath}{colorama.Style.RESET_ALL}"
+                    )
 
 
 def bootstrap():
