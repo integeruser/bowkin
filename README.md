@@ -1,17 +1,17 @@
 # bowkin
-`bowkin` is a tool for patching binaries to use **specific versions of glibc** (the GNU C standard library).
+`bowkin` (or `b💋wkin`) is a tool for patching binaries to use **specific versions of glibc** (the GNU C standard library).
 
 
 ## Requisites
-[PatchELF](https://nixos.org/patchelf.html), and a bunch of Python 3 packages:
+[PatchELF](https://nixos.org/patchelf.html), and some Python 3 packages:
 ```
 $ pip3 install -r requirements.txt
 ```
 
 ## Installation
 1. Clone this repository: `git clone https://github.com/integeruser/bowkin.git ~/.bowkin`
-2. Download our curated libc collection from https://drive.google.com/drive/folders/1PWx8QSa2h6qmplL_s0ZCzuSLKKIEN4tt into `~/.bowkin/libcs`
-3. For convenience, add `bowkin.py` and `bowkin-db.py` to the `PATH` (e.g. `ln -s ~/bowkin/bowkin.py /usr/local/bin/bowkin` and `ln -s ~/bowkin/bowkin-db.py /usr/local/bin/bowkin-db`)
+2. (Optional) For convenience, add `bowkin.py` and `bowkin-db.py` to the `PATH` (e.g. `ln -s ~/bowkin/bowkin.py /usr/local/bin/bowkin` and `ln -s ~/bowkin/bowkin-db.py /usr/local/bin/bowkin-db`)
+3. Download a bunch of libcs: `bowkin-db bootstrap`
 4. Rebuild the database: `bowkin-db rebuild`
 
 
@@ -48,7 +48,7 @@ $ ./challenge
 ```
 which in this case is the version used by Ubuntu 18.04 at the time of writing.
 
-Let's use `bowkin` to force the binary to use the libc provided for the challenge.
+Let's use `bowkin` to force the binary to use the libc provided.
 1. First, identify the library:
 ```bash
 $ bowkin identify /example/libc.so.6
@@ -171,4 +171,28 @@ Continuing.
 Child exited with status 0
 [*] Process '/usr/bin/gdbserver' stopped with exit code 0 (pid 9856)
 [*] Got EOF while reading in interactive
+```
+
+## Usage (cont.)
+You can add any `glibc-*` packages to the database with `bowkin-db add <package>`:
+```bash
+$ file ./usr/lib/libc-2.22.so
+./usr/lib/libc-2.22.so: ELF 32-bit LSB pie executable Intel 80386, version 1 (GNU/Linux), dynamically linked, interpreter /usr/lib/ld-linux.so.2, BuildID[sha1]=faef9af5a88432766d76d7da2cf961c75b6e0e0b, for GNU/Linux 2.6.32, not stripped
+$ bowkin identify ./usr/lib/libc-2.22.so
+The supplied libc is not in the database.
+```
+```bash
+$ bowkin-db add ./glibc-2.22-4-i686.pkg.tar.xz
+Saved: .../ld-i686-2.22-4.so
+Saved: .../libc-i686-2.22-4.so
+$ bowkin identify ./usr/lib/libc-2.22.so
+{
+    "architecture": "i686",
+    "buildID": "faef9af5a88432766d76d7da2cf961c75b6e0e0b",
+    "distro": null,
+    "realpath": "/Users/fcagnin/Google Drive/bowkin-libcs/libcs/libc-i686-2.22-4.so",
+    "release": null,
+    "relpath": "libc-i686-2.22-4.so",
+    "version": "2.22-4"
+}
 ```
