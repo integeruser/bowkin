@@ -57,6 +57,10 @@ def extract(package_filepath, match, dest_dirpath):
             shell=True,
             check=True,
         )
+        # extract libc
+        libc_filepath = extract_libc_filepath(tmp_dirpath)
+        if bowkin.identify(libc_filepath):  # is already present?
+            utils.abort("The libc and loader are already presents")
 
         # extract ld
         ld_filepath = extract_ld_filepath(tmp_dirpath)
