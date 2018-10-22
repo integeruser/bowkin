@@ -108,25 +108,16 @@ def extract_ld_and_libc(package_filepath, match):
 def add(package_filepath):
     package_filename = os.path.basename(package_filepath)
 
-    # libc6_2.23-0ubuntu10_amd64.deb
+    # e.g. libc6_2.23-0ubuntu10_amd64.deb or libc6_2.24-11+deb9u3_amd64.deb
     match = re.match(
-        "libc6(?:-dbg)?_(?P<version>.*?ubuntu.*?)_(?P<arch>i386|amd64).deb",
+        "libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb).*?)_(?P<arch>i386|amd64).deb",
         package_filename,
     )
     if match:
         extract_ld_and_libc(package_filepath, match)
         return
 
-    # libc6_2.24-11+deb9u3_amd64.deb
-    match = re.match(
-        "libc6(?:-dbg)?_(?P<version>.*?deb.*?)_(?P<arch>i386|amd64).deb",
-        package_filename,
-    )
-    if match:
-        extract_ld_and_libc(package_filepath, match)
-        return
-
-    # glibc-2.27-2-x86_64.pkg.tar.xz
+    # e.g. glibc-2.27-2-x86_64.pkg.tar.xz
     match = re.match(
         "glibc-(?P<version>\d.\d+-\d)-(?P<arch>i686|x86_64).pkg.tar.xz",
         package_filename,
