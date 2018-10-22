@@ -243,10 +243,9 @@ def rebuild():
             "PRIMARY KEY(version, buildID))"
         )
 
-        for filepath in glob.glob(f"{bowkin.libcs_dirpath}/**/*", recursive=True):
-            # TODO improve
+        for filepath in glob.glob(f"{bowkin.libcs_dirpath}/**", recursive=True):
             match = re.match(
-                r"(?:.*)libcs/(?P<relpath>(?P<distro>.+?)/(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so)$",
+                r"(?:.*)libcs/(?P<relpath>(?P<distro>.+?)?/?(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so)$",
                 filepath,
             )
             if match:
