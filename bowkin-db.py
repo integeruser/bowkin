@@ -151,11 +151,11 @@ def bootstrap():
         utils.abort("Aborted by user.")
 
     # Ubuntu
-    os_dirpath = os.path.join(bowkin.libcs_dirpath, "ubuntu")
-    os.makedirs(os_dirpath, exist_ok=True)
-    for distro in ("trusty", "xenial", "artful", "bionic"):
-        distro_dirpath = os.path.join(os_dirpath, distro)
-        os.makedirs(distro_dirpath, exist_ok=True)
+    distro_dirpath = os.path.join(bowkin.libcs_dirpath, "ubuntu")
+    os.makedirs(distro_dirpath, exist_ok=True)
+    for release in ("trusty", "xenial", "artful", "bionic"):
+        release_dirpath = os.path.join(distro_dirpath, distro)
+        os.makedirs(release_dirpath, exist_ok=True)
         for arch in ("i386", "amd64"):
             for package in ("libc6", "libc6-dbg"):
                 print()
@@ -165,14 +165,14 @@ def bootstrap():
                     continue
                 with tempfile.TemporaryDirectory() as tmp_dirpath:
                     package_filepath = utils.download(tmp_dirpath, package_url)
-                    add(package_filepath, dest_dirpath=distro_dirpath)
+                    add(package_filepath, dest_dirpath=release_dirpath)
 
     # Debian
-    os_dirpath = os.path.join(bowkin.libcs_dirpath, "debian")
-    os.makedirs(os_dirpath, exist_ok=True)
-    for distro in ("squeeze", "wheezy", "jessie", "stretch"):
-        distro_dirpath = os.path.join(os_dirpath, distro)
-        os.makedirs(distro_dirpath, exist_ok=True)
+    distro_dirpath = os.path.join(bowkin.libcs_dirpath, "debian")
+    os.makedirs(distro_dirpath, exist_ok=True)
+    for release in ("squeeze", "wheezy", "jessie", "stretch"):
+        release_dirpath = os.path.join(distro_dirpath, distro)
+        os.makedirs(release_dirpath, exist_ok=True)
         for arch in ("i386", "amd64"):
             for package in ("libc6", "libc6-dbg"):
                 print()
@@ -182,18 +182,18 @@ def bootstrap():
                     continue
                 with tempfile.TemporaryDirectory() as tmp_dirpath:
                     package_filepath = utils.download(tmp_dirpath, package_url)
-                    add(package_filepath, dest_dirpath=distro_dirpath)
+                    add(package_filepath, dest_dirpath=release_dirpath)
 
     # Arch Linux
-    os_dirpath = os.path.join(bowkin.libcs_dirpath, "arch")
-    os.makedirs(os_dirpath, exist_ok=True)
+    distro_dirpath = os.path.join(bowkin.libcs_dirpath, "arch")
+    os.makedirs(distro_dirpath, exist_ok=True)
     for arch in ("i686", "x86_64"):
         url = "https://archive.archlinux.org/packages/g/glibc/"
         for package_url in extract_package_urls_arch(url, arch):
             print()
             with tempfile.TemporaryDirectory() as tmp_dirpath:
                 package_filepath = utils.download(tmp_dirpath, package_url)
-                add(package_filepath, dest_dirpath=os_dirpath)
+                add(package_filepath, dest_dirpath=distro_dirpath)
 
 
 def extract_package_url_ubuntu_debian(url):
