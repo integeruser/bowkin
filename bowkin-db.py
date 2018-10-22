@@ -283,5 +283,6 @@ if __name__ == "__main__":
         rebuild()
     elif args.action == "bootstrap":
         bootstrap()
+        rebuild()
     elif args.action == "rebuild":
         rebuild()
