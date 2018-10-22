@@ -33,7 +33,9 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
     try:
         match = next(match for match in matches if match is not None)
     except StopIteration:
-        utils.bright_message("Can't extract the libc and loader from the specified package")
+        utils.bright_message(
+            "Can't extract the libc and loader from the specified package"
+        )
         return
     extract(package_filepath, match, dest_dirpath)
 
@@ -61,7 +63,9 @@ def extract(package_filepath, match, dest_dirpath):
         # extract libc
         libc_filepath = extract_libc_filepath(tmp_dirpath)
         if bowkin.identify(libc_filepath):  # is already present?
-            utils.bright_message("The libc and loader are already presents", colorama.Fore.RED)
+            utils.bright_message(
+                "The libc and loader are already presents", colorama.Fore.RED
+            )
             return
 
         saved_something = False
@@ -108,7 +112,11 @@ def extract(package_filepath, match, dest_dirpath):
             )
 
         if not saved_something:
-            utils.bright_message("Cannot find libc, ld or symbols. Open an issue with a link for the package that you used", colorama.Fore.RED)
+            utils.bright_message(
+                "Cannot find libc, ld or symbols. Open an issue with a link for the package that you used",
+                colorama.Fore.RED,
+            )
+
 
 def extract_ld_filepath(tmp_dirpath):
     ld_filepath = None
