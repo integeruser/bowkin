@@ -142,25 +142,28 @@ def bootstrap():
         distro_dirpath = os.path.join(os_dirpath, distro)
         os.makedirs(distro_dirpath, exist_ok=True)
         for arch in ("i386", "amd64"):
-            with urllib.request.urlopen(
-                f"https://packages.ubuntu.com/{distro}/{arch}/libc6/download"
-            ) as u:
-                content = u.read()
-                try:
-                    package_url = (
-                        re.search(br"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", content)
-                        .group("url")
-                        .decode("ascii")
-                    )
-                    with tempfile.TemporaryDirectory() as tmp_dirpath:
-                        package_filepath = utils.download(tmp_dirpath, package_url)
-                        add(
-                            package_filepath,
-                            ask_confirmation=False,
-                            dest_dirpath=distro_dirpath,
+            for package in ("libc6", "libc6-dbg"):
+                with urllib.request.urlopen(
+                    f"https://packages.ubuntu.com/{distro}/{arch}/{package}/download"
+                ) as u:
+                    content = u.read()
+                    try:
+                        package_url = (
+                            re.search(
+                                br"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", content
+                            )
+                            .group("url")
+                            .decode("ascii")
                         )
-                except AttributeError:
-                    print(f"problems on {url}")
+                        with tempfile.TemporaryDirectory() as tmp_dirpath:
+                            package_filepath = utils.download(tmp_dirpath, package_url)
+                            add(
+                                package_filepath,
+                                ask_confirmation=False,
+                                dest_dirpath=distro_dirpath,
+                            )
+                    except AttributeError:
+                        print(f"problems on {url}")
 
 
 def rebuild():
