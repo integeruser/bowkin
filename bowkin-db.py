@@ -15,8 +15,10 @@ import colorama
 import bowkin
 import utils
 
+# ############################################################################ #
 
-def add(package_filepath, ask_confirmation=True, dest_dirpath=bowkin.libcs_dirpath):
+
+def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
     package_filename = os.path.basename(package_filepath)
 
     # e.g. libc6_2.23-0ubuntu10_amd64.deb or libc6_2.24-11+deb9u3_amd64.deb
@@ -32,12 +34,10 @@ def add(package_filepath, ask_confirmation=True, dest_dirpath=bowkin.libcs_dirpa
         match = next(match for match in matches if match is not None)
     except StopIteration:
         return
-    extract(package_filepath, match, ask_confirmation, dest_dirpath)
+    extract(package_filepath, match, dest_dirpath)
 
 
-def extract(package_filepath, match, ask_confirmation, dest_dirpath):
-    print(f"Extracting: {package_filepath}")
-
+def extract(package_filepath, match, dest_dirpath):
     package_filename = os.path.basename(package_filepath)
     libc_arch = match.group("arch")
     libc_version = match.group("version")
@@ -58,66 +58,89 @@ def extract(package_filepath, match, ask_confirmation, dest_dirpath):
             check=True,
         )
 
-        libc_filepath = (
-            subprocess.run(
-                f"realpath $(find . -name 'libc-*.so')",
-                cwd=tmp_dirpath,
-                shell=True,
-                check=True,
-                capture_output=True,
-            )
-            .stdout.decode("ascii")
-            .strip()
-        )
-        if libc_filepath:
-            debug_symbols = "dbg" in package_filename or "debug" in os.path.relpath(
-                libc_filepath, tmp_dirpath
-            )
-            if debug_symbols:
-                print(
-                    f"Found debug symbols: {colorama.Style.BRIGHT}{libc_filepath}{colorama.Style.RESET_ALL}"
-                )
-            else:
-                print(
-                    f"Found libc: {colorama.Style.BRIGHT}{libc_filepath}{colorama.Style.RESET_ALL}"
-                )
-            proper_libc_filename = f"libc-{libc_arch}-{libc_version}.so"
-            if debug_symbols:
-                proper_libc_filename += ".debug"
-            proper_libc_filepath = os.path.join(dest_dirpath, proper_libc_filename)
-            if not ask_confirmation or utils.query_yes_no(
-                f"Copy it to {colorama.Style.BRIGHT}{proper_libc_filepath}{colorama.Style.RESET_ALL}?"
-            ):
-                shutil.copy2(libc_filepath, proper_libc_filepath)
-                print(
-                    f"Saved: {colorama.Style.BRIGHT}{proper_libc_filepath}{colorama.Style.RESET_ALL}"
-                )
-
-        ld_filepath = (
-            subprocess.run(
-                f"realpath $(find . -name 'ld-*.so')",
-                cwd=tmp_dirpath,
-                shell=True,
-                check=True,
-                capture_output=True,
-            )
-            .stdout.decode("ascii")
-            .strip()
-        )
+        # extract ld
+        ld_filepath = extract_ld_filepath(tmp_dirpath)
         if ld_filepath:
-            debug_symbols = "dbg" in package_filename or "debug" in os.path.relpath(
-                ld_filepath, tmp_dirpath
+            proper_ld_filename = f"ld-{libc_arch}-{libc_version}.so"
+            proper_ld_filepath = os.path.join(dest_dirpath, proper_ld_filename)
+            shutil.copy2(ld_filepath, proper_ld_filepath)
+            ld_relpath = os.path.relpath(proper_ld_filepath, bowkin.libcs_dirpath)
+            print(
+                f"Saved: {colorama.Style.BRIGHT}.../{ld_relpath}{colorama.Style.RESET_ALL}"
             )
-            if not debug_symbols:
-                proper_ld_filename = f"ld-{libc_arch}-{libc_version}.so"
-                proper_ld_filepath = os.path.join(dest_dirpath, proper_ld_filename)
-                if not ask_confirmation or utils.query_yes_no(
-                    f"Copy it to {colorama.Style.BRIGHT}{proper_ld_filepath}{colorama.Style.RESET_ALL}?"
-                ):
-                    shutil.copy2(ld_filepath, proper_ld_filepath)
-                    print(
-                        f"Saved: {colorama.Style.BRIGHT}{proper_ld_filepath}{colorama.Style.RESET_ALL}"
-                    )
+
+        # extract libc
+        libc_filepath = extract_libc_filepath(tmp_dirpath)
+        if libc_filepath:
+            proper_libc_filename = f"libc-{libc_arch}-{libc_version}.so"
+            proper_libc_filepath = os.path.join(dest_dirpath, proper_libc_filename)
+            shutil.copy2(libc_filepath, proper_libc_filepath)
+            libc_relpath = os.path.relpath(proper_libc_filepath, bowkin.libcs_dirpath)
+            print(
+                f"Saved: {colorama.Style.BRIGHT}.../{libc_relpath}{colorama.Style.RESET_ALL}"
+            )
+
+        # extract libc symbols
+        libc_symbols_filepath = extract_libc_symbols_filepath(tmp_dirpath)
+        if libc_symbols_filepath:
+            proper_libc_symbols_filename = f"libc-{libc_arch}-{libc_version}.so.debug"
+            proper_libc_symbols_filepath = os.path.join(
+                dest_dirpath, proper_libc_symbols_filename
+            )
+            shutil.copy2(libc_symbols_filepath, proper_libc_symbols_filepath)
+            libc_symbols_relpath = os.path.relpath(
+                proper_libc_symbols_filepath, bowkin.libcs_dirpath
+            )
+            print(
+                f"Saved: {colorama.Style.BRIGHT}.../{libc_symbols_relpath}{colorama.Style.RESET_ALL}"
+            )
+
+
+def extract_ld_filepath(tmp_dirpath):
+    ld_filepath = None
+    for path in (
+        "lib/i386-linux-gnu/ld-*.so",
+        "lib/x86_64-linux-gnu/ld-*.so",
+        "usr/lib/ld-*.so",
+    ):
+        ld_filepaths = glob.glob(os.path.join(tmp_dirpath, path))
+        if ld_filepaths:
+            assert len(ld_filepaths) == 1
+            ld_filepath = ld_filepaths[0]
+            return ld_filepath
+    return None
+
+
+def extract_libc_filepath(tmp_dirpath):
+    libc_filepath = None
+    for path in (
+        "lib/i386-linux-gnu/libc-*.so",
+        "lib/x86_64-linux-gnu/libc-*.so",
+        "usr/lib/libc-*.so",
+    ):
+        libc_filepaths = glob.glob(os.path.join(tmp_dirpath, path))
+        if libc_filepaths:
+            assert len(libc_filepaths) == 1
+            libc_filepath = libc_filepaths[0]
+            return libc_filepath
+    return None
+
+
+def extract_libc_symbols_filepath(tmp_dirpath):
+    libc_symbols_filepath = None
+    for path in (
+        "usr/lib/debug/lib/i386-linux-gnu/libc-*.so",
+        "usr/lib/debug/lib/x86_64-linux-gnu/libc-*.so",
+    ):
+        libc_symbols_filepaths = glob.glob(os.path.join(tmp_dirpath, path))
+        if libc_symbols_filepaths:
+            assert len(libc_symbols_filepaths) == 1
+            libc_symbols_filepath = libc_symbols_filepaths[0]
+            return libc_symbols_filepath
+    return None
+
+
+# ############################################################################ #
 
 
 def bootstrap():
@@ -135,17 +158,14 @@ def bootstrap():
         os.makedirs(distro_dirpath, exist_ok=True)
         for arch in ("i386", "amd64"):
             for package in ("libc6", "libc6-dbg"):
+                print()
                 url = f"https://packages.ubuntu.com/{distro}/{arch}/{package}/download"
                 package_url = extract_package_url_ubuntu_debian(url)
                 if not package_url:
                     continue
                 with tempfile.TemporaryDirectory() as tmp_dirpath:
                     package_filepath = utils.download(tmp_dirpath, package_url)
-                    add(
-                        package_filepath,
-                        ask_confirmation=False,
-                        dest_dirpath=distro_dirpath,
-                    )
+                    add(package_filepath, dest_dirpath=distro_dirpath)
 
     # Debian
     os_dirpath = os.path.join(bowkin.libcs_dirpath, "debian")
@@ -155,17 +175,14 @@ def bootstrap():
         os.makedirs(distro_dirpath, exist_ok=True)
         for arch in ("i386", "amd64"):
             for package in ("libc6", "libc6-dbg"):
+                print()
                 url = f"https://packages.debian.org/{distro}/{arch}/{package}/download"
                 package_url = extract_package_url_ubuntu_debian(url)
                 if not package_url:
                     continue
                 with tempfile.TemporaryDirectory() as tmp_dirpath:
                     package_filepath = utils.download(tmp_dirpath, package_url)
-                    add(
-                        package_filepath,
-                        ask_confirmation=False,
-                        dest_dirpath=distro_dirpath,
-                    )
+                    add(package_filepath, dest_dirpath=distro_dirpath)
 
     # Arch Linux
     os_dirpath = os.path.join(bowkin.libcs_dirpath, "arch")
@@ -173,9 +190,10 @@ def bootstrap():
     for arch in ("i686", "x86_64"):
         url = "https://archive.archlinux.org/packages/g/glibc/"
         for package_url in extract_package_urls_arch(url, arch):
+            print()
             with tempfile.TemporaryDirectory() as tmp_dirpath:
                 package_filepath = utils.download(tmp_dirpath, package_url)
-                add(package_filepath, ask_confirmation=False, dest_dirpath=os_dirpath)
+                add(package_filepath, dest_dirpath=os_dirpath)
 
 
 def extract_package_url_ubuntu_debian(url):
@@ -213,6 +231,9 @@ def extract_package_urls_arch(url, arch):
             return []
 
 
+# ############################################################################ #
+
+
 def rebuild():
     with sqlite3.connect(bowkin.libcs_db_filepath) as conn:
         conn.execute("DROP TABLE IF EXISTS libcs")
@@ -241,6 +262,8 @@ def rebuild():
                     ),
                 )
 
+
+# ############################################################################ #
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
