@@ -280,6 +280,7 @@ if __name__ == "__main__":
 
     if args.action == "add":
         add(args.package.name)
+        rebuild()
     elif args.action == "bootstrap":
         bootstrap()
     elif args.action == "rebuild":
