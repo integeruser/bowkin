@@ -135,7 +135,8 @@ def bootstrap():
         os.makedirs(distro_dirpath, exist_ok=True)
         for arch in ("i386", "amd64"):
             for package in ("libc6", "libc6-dbg"):
-                package_url = extract_package_url_ubuntu(distro, arch, package)
+                url = f"https://packages.ubuntu.com/{distro}/{arch}/{package}/download"
+                package_url = extract_package_url_ubuntu_debian(url)
                 if not package_url:
                     continue
                 with tempfile.TemporaryDirectory() as tmp_dirpath:
@@ -146,9 +147,38 @@ def bootstrap():
                         dest_dirpath=distro_dirpath,
                     )
 
+    # Debian
+    os_dirpath = os.path.join(bowkin.libcs_dirpath, "debian")
+    os.makedirs(os_dirpath, exist_ok=True)
+    for distro in ("squeeze", "wheezy", "jessie", "stretch"):
+        distro_dirpath = os.path.join(os_dirpath, distro)
+        os.makedirs(distro_dirpath, exist_ok=True)
+        for arch in ("i386", "amd64"):
+            for package in ("libc6", "libc6-dbg"):
+                url = f"https://packages.debian.org/{distro}/{arch}/{package}/download"
+                package_url = extract_package_url_ubuntu_debian(url)
+                if not package_url:
+                    continue
+                with tempfile.TemporaryDirectory() as tmp_dirpath:
+                    package_filepath = utils.download(tmp_dirpath, package_url)
+                    add(
+                        package_filepath,
+                        ask_confirmation=False,
+                        dest_dirpath=distro_dirpath,
+                    )
 
-def extract_package_url_ubuntu(distro, arch, package):
-    url = f"https://packages.ubuntu.com/{distro}/{arch}/{package}/download"
+    # Arch Linux
+    os_dirpath = os.path.join(bowkin.libcs_dirpath, "arch")
+    os.makedirs(os_dirpath, exist_ok=True)
+    for arch in ("i686", "x86_64"):
+        url = "https://archive.archlinux.org/packages/g/glibc/"
+        for package_url in extract_package_urls_arch(url, arch):
+            with tempfile.TemporaryDirectory() as tmp_dirpath:
+                package_filepath = utils.download(tmp_dirpath, package_url)
+                add(package_filepath, ask_confirmation=False, dest_dirpath=os_dirpath)
+
+
+def extract_package_url_ubuntu_debian(url):
     with urllib.request.urlopen(url) as u:
         try:
             package_url = (
@@ -162,6 +192,25 @@ def extract_package_url_ubuntu(distro, arch, package):
                 f"{colorama.Style.BRIGHT}{colorama.Fore.RED}Problems on: {url}{colorama.Style.RESET_ALL}"
             )
             return None
+
+
+def extract_package_urls_arch(url, arch):
+    with urllib.request.urlopen(url) as u:
+        try:
+            package_filenames = re.findall(
+                fr"['\"](?P<package_filename>glibc-(?:.*?)-{arch}\.pkg\.tar\.[gx]z)['\"]",
+                u.read().decode("ascii"),
+            )
+            package_urls = [
+                os.path.join(url, package_filename)
+                for package_filename in package_filenames
+            ]
+            return package_urls
+        except AttributeError:
+            print(
+                f"{colorama.Style.BRIGHT}{colorama.Fore.RED}Problems on: {url}{colorama.Style.RESET_ALL}"
+            )
+            return []
 
 
 def rebuild():
