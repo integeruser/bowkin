@@ -30,7 +30,7 @@ def extract_ld_and_libc(package_filepath, match):
             check=True,
         )
         subprocess.run(
-            f"if [ -f data.tar.xz ]; then tar xf data.tar.xz; fi",
+            f"if [ -f data.tar.?z ]; then tar xf data.tar.?z; fi",
             cwd=tmp_dirpath,
             shell=True,
             check=True,
