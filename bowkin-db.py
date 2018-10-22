@@ -267,7 +267,6 @@ def rebuild():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="action")
-    subparsers.required = True
 
     add_parser = subparsers.add_parser("add")
     add_parser.add_argument("package", type=argparse.FileType())
