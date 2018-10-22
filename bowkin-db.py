@@ -16,15 +16,35 @@ import bowkin
 import utils
 
 
-def extract_ld_and_libc(package_filepath, match):
+def add(package_filepath, ask_confirmation=True, dest_dirpath=bowkin.libcs_dirpath):
+    package_filename = os.path.basename(package_filepath)
+
+    # e.g. libc6_2.23-0ubuntu10_amd64.deb or libc6_2.24-11+deb9u3_amd64.deb
+    matches = [
+        re.match(pattern, package_filename)
+        for pattern in (
+            "libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb).*?)_(?P<arch>i386|amd64).deb",
+            "glibc-(?P<version>\d.\d+-\d)-(?P<arch>i686|x86_64).pkg.tar.xz",
+        )
+    ]
+
+    try:
+        match = next(match for match in matches if match is not None)
+    except StopIteration:
+        return
+    extract(package_filepath, match, ask_confirmation, dest_dirpath)
+
+
+def extract(package_filepath, match, ask_confirmation, dest_dirpath):
     print(f"Extracting: {package_filepath}")
+
+    package_filename = os.path.basename(package_filepath)
     libc_arch = match.group("arch")
     libc_version = match.group("version")
 
     with tempfile.TemporaryDirectory() as tmp_dirpath:
         shutil.copy2(package_filepath, tmp_dirpath)
 
-        package_filename = os.path.basename(package_filepath)
         subprocess.run(
             f"tar xf {shlex.quote(package_filename)}",
             cwd=tmp_dirpath,
@@ -64,13 +84,14 @@ def extract_ld_and_libc(package_filepath, match):
             proper_libc_filename = f"libc-{libc_arch}-{libc_version}.so"
             if debug_symbols:
                 proper_libc_filename += ".debug"
-            proper_libc_filepath = os.path.join(
-                bowkin.libcs_dirpath, proper_libc_filename
-            )
-            if utils.query_yes_no(
+            proper_libc_filepath = os.path.join(dest_dirpath, proper_libc_filename)
+            if not ask_confirmation or utils.query_yes_no(
                 f"Copy it to {colorama.Style.BRIGHT}{proper_libc_filepath}{colorama.Style.RESET_ALL}?"
             ):
                 shutil.copy2(libc_filepath, proper_libc_filepath)
+                print(
+                    f"Saved: {colorama.Style.BRIGHT}{proper_libc_filepath}{colorama.Style.RESET_ALL}"
+                )
 
         ld_filepath = (
             subprocess.run(
@@ -98,57 +119,46 @@ def extract_ld_and_libc(package_filepath, match):
             proper_ld_filename = f"ld-{libc_arch}-{libc_version}.so"
             if debug_symbols:
                 proper_ld_filename += ".debug"
-            proper_ld_filepath = os.path.join(bowkin.libcs_dirpath, proper_ld_filename)
-            if utils.query_yes_no(
+            proper_ld_filepath = os.path.join(dest_dirpath, proper_ld_filename)
+            if not ask_confirmation or utils.query_yes_no(
                 f"Copy it to {colorama.Style.BRIGHT}{proper_ld_filepath}{colorama.Style.RESET_ALL}?"
             ):
                 shutil.copy2(ld_filepath, proper_ld_filepath)
-
-
-def add(package_filepath):
-    package_filename = os.path.basename(package_filepath)
-
-    # e.g. libc6_2.23-0ubuntu10_amd64.deb or libc6_2.24-11+deb9u3_amd64.deb
-    match = re.match(
-        "libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb).*?)_(?P<arch>i386|amd64).deb",
-        package_filename,
-    )
-    if match:
-        extract_ld_and_libc(package_filepath, match)
-        return
-
-    # e.g. glibc-2.27-2-x86_64.pkg.tar.xz
-    match = re.match(
-        "glibc-(?P<version>\d.\d+-\d)-(?P<arch>i686|x86_64).pkg.tar.xz",
-        package_filename,
-    )
-    if match:
-        extract_ld_and_libc(package_filepath, match)
-        return
+                print(
+                    f"Saved: {colorama.Style.BRIGHT}{proper_ld_filepath}{colorama.Style.RESET_ALL}"
+                )
 
 
 def bootstrap():
-    print("ubuntu")
+    if not utils.query_yes_no(
+        "This operation will download a bunch of libcs into"
+        f" {colorama.Style.BRIGHT}{bowkin.libcs_dirpath}{colorama.Style.RESET_ALL}. Proceed?"
+    ):
+        utils.abort("Aborted by user.")
+
+    os_dirpath = os.path.join(bowkin.libcs_dirpath, "ubuntu")
+    os.makedirs(os_dirpath, exist_ok=True)
     for distro in ("trusty", "xenial", "artful", "bionic"):
-        print(distro)
+        distro_dirpath = os.path.join(os_dirpath, distro)
+        os.makedirs(distro_dirpath, exist_ok=True)
         for arch in ("i386", "amd64"):
-            url = f"https://packages.ubuntu.com/{distro}/{arch}/libc6/download"
-            with urllib.request.urlopen(url) as u:
+            with urllib.request.urlopen(
+                f"https://packages.ubuntu.com/{distro}/{arch}/libc6/download"
+            ) as u:
                 content = u.read()
                 try:
-                    url = (
+                    package_url = (
                         re.search(br"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", content)
                         .group("url")
                         .decode("ascii")
                     )
-                    with tempfile.TemporaryDirectory() as tmpdirpath:
-                        print(f"Downloading: {url}")
-                        package_filepath, _ = urllib.request.urlretrieve(
-                            url,
-                            filename=os.path.join(tmpdirpath, os.path.basename(url)),
+                    with tempfile.TemporaryDirectory() as tmp_dirpath:
+                        package_filepath = utils.download(tmp_dirpath, package_url)
+                        add(
+                            package_filepath,
+                            ask_confirmation=False,
+                            dest_dirpath=distro_dirpath,
                         )
-                        print(package_filepath)
-                        add(package_filepath)
                 except AttributeError:
                     print(f"problems on {url}")
 
