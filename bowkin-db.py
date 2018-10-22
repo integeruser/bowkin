@@ -25,7 +25,7 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
     matches = [
         re.match(pattern, package_filename)
         for pattern in (
-            "libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb).*?)_(?P<arch>i386|amd64).deb",
+            "libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb).*?)_(?P<arch>i386|amd64|armel|armhf|arm64).deb",
             "glibc-(?P<version>\d.\d+-\d+)-(?P<arch>i686|x86_64).pkg.tar.xz",
         )
     ]
@@ -99,6 +99,9 @@ def extract(package_filepath, match, dest_dirpath):
 def extract_ld_filepath(tmp_dirpath):
     ld_filepath = None
     for path in (
+        "lib/aarch64-linux-gnu/ld-*.so",
+        "lib/arm-linux-gnueabihf/ld-*.so",
+        "lib/arm-linux-gnueabi/ld-*.so",
         "lib/i386-linux-gnu/ld-*.so",
         "lib/x86_64-linux-gnu/ld-*.so",
         "usr/lib/ld-*.so",
@@ -114,6 +117,9 @@ def extract_ld_filepath(tmp_dirpath):
 def extract_libc_filepath(tmp_dirpath):
     libc_filepath = None
     for path in (
+        "lib/aarch64-linux-gnu/libc-*.so",
+        "lib/arm-linux-gnueabihf/libc-*.so",
+        "lib/arm-linux-gnueabi/libc-*.so",
         "lib/i386-linux-gnu/libc-*.so",
         "lib/x86_64-linux-gnu/libc-*.so",
         "usr/lib/libc-*.so",
