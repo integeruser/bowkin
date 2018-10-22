@@ -273,14 +273,21 @@ def rebuild():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="action")
-    subparsers.required = True
 
-    add_parser = subparsers.add_parser("add")
+    add_parser = subparsers.add_parser(
+        "add",
+        help="add to the libs folder the libc and the loader from the specified packet",
+    )
     add_parser.add_argument("package", type=argparse.FileType())
 
-    bootstrap_parser = subparsers.add_parser("bootstrap")
+    bootstrap_parser = subparsers.add_parser(
+        "bootstrap",
+        help="will download some libcs used in ubuntu, debian and arch linux",
+    )
 
-    rebuild_parser = subparsers.add_parser("rebuild")
+    rebuild_parser = subparsers.add_parser(
+        "rebuild", help="will rebuild the database using the added libcs"
+    )
 
     args = parser.parse_args()
 
@@ -292,3 +299,5 @@ if __name__ == "__main__":
         rebuild()
     elif args.action == "rebuild":
         rebuild()
+    else:
+        parser.print_help()
