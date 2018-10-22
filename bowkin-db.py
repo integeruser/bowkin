@@ -8,6 +8,7 @@ import shutil
 import sqlite3
 import subprocess
 import tempfile
+import urllib.request
 
 import colorama
 
@@ -16,6 +17,7 @@ import utils
 
 
 def extract_ld_and_libc(package_filepath, match):
+    print(f"Extracting: {package_filepath}")
     libc_arch = match.group("arch")
     libc_version = match.group("version")
 
@@ -134,6 +136,32 @@ def add(package_filepath):
         return
 
 
+def bootstrap():
+    print("ubuntu")
+    for distro in ("trusty", "xenial", "artful", "bionic"):
+        print(distro)
+        for arch in ("i386", "amd64"):
+            url = f"https://packages.ubuntu.com/{distro}/{arch}/libc6/download"
+            with urllib.request.urlopen(url) as u:
+                content = u.read()
+                try:
+                    url = (
+                        re.search(br"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", content)
+                        .group("url")
+                        .decode("ascii")
+                    )
+                    with tempfile.TemporaryDirectory() as tmpdirpath:
+                        print(f"Downloading: {url}")
+                        package_filepath, _ = urllib.request.urlretrieve(
+                            url,
+                            filename=os.path.join(tmpdirpath, os.path.basename(url)),
+                        )
+                        print(package_filepath)
+                        add(package_filepath)
+                except AttributeError:
+                    print(f"problems on {url}")
+
+
 def rebuild():
     with sqlite3.connect(bowkin.libcs_db_filepath) as conn:
         conn.execute("DROP TABLE IF EXISTS libcs")
@@ -171,11 +199,15 @@ if __name__ == "__main__":
     add_parser = subparsers.add_parser("add")
     add_parser.add_argument("package", type=argparse.FileType())
 
+    bootstrap_parser = subparsers.add_parser("bootstrap")
+
     rebuild_parser = subparsers.add_parser("rebuild")
 
     args = parser.parse_args()
 
     if args.action == "add":
         add(args.package.name)
+    elif args.action == "bootstrap":
+        bootstrap()
     elif args.action == "rebuild":
         rebuild()
