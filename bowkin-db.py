@@ -108,7 +108,7 @@ def add(package_filepath):
 
     # libc6_2.23-0ubuntu10_amd64.deb
     match = re.match(
-        "libc6(?:-dbg)_(?P<version>\d.\d+-\dubuntu\d+)_(?P<arch>i386|amd64).deb",
+        "libc6(?:-dbg)?_(?P<version>.*?ubuntu.*?)_(?P<arch>i386|amd64).deb",
         package_filename,
     )
     if match:
@@ -117,7 +117,7 @@ def add(package_filepath):
 
     # libc6_2.24-11+deb9u3_amd64.deb
     match = re.match(
-        "libc6(?:-dbg)_(?P<version>\d.\d+-\d+\+deb\du\d)_(?P<arch>i386|amd64).deb",
+        "libc6(?:-dbg)?_(?P<version>.*?deb.*?)_(?P<arch>i386|amd64).deb",
         package_filename,
     )
     if match:
