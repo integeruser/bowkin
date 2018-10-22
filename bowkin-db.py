@@ -91,7 +91,7 @@ def extract_ld_and_libc(package_filepath, match):
                 )
             else:
                 print(
-                    f"Found libc: {colorama.Style.BRIGHT}{ld_filepath}{colorama.Style.RESET_ALL}"
+                    f"Found ld: {colorama.Style.BRIGHT}{ld_filepath}{colorama.Style.RESET_ALL}"
                 )
             proper_ld_filename = f"ld-{libc_arch}-{libc_version}.so"
             if debug_symbols:
