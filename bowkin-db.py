@@ -136,6 +136,7 @@ def bootstrap():
     ):
         utils.abort("Aborted by user.")
 
+    # Ubuntu
     os_dirpath = os.path.join(bowkin.libcs_dirpath, "ubuntu")
     os.makedirs(os_dirpath, exist_ok=True)
     for distro in ("trusty", "xenial", "artful", "bionic"):
@@ -143,27 +144,33 @@ def bootstrap():
         os.makedirs(distro_dirpath, exist_ok=True)
         for arch in ("i386", "amd64"):
             for package in ("libc6", "libc6-dbg"):
-                with urllib.request.urlopen(
-                    f"https://packages.ubuntu.com/{distro}/{arch}/{package}/download"
-                ) as u:
-                    content = u.read()
-                    try:
-                        package_url = (
-                            re.search(
-                                br"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", content
-                            )
-                            .group("url")
-                            .decode("ascii")
-                        )
-                        with tempfile.TemporaryDirectory() as tmp_dirpath:
-                            package_filepath = utils.download(tmp_dirpath, package_url)
-                            add(
-                                package_filepath,
-                                ask_confirmation=False,
-                                dest_dirpath=distro_dirpath,
-                            )
-                    except AttributeError:
-                        print(f"problems on {url}")
+                package_url = extract_package_url_ubuntu(distro, arch, package)
+                if not package_url:
+                    continue
+                with tempfile.TemporaryDirectory() as tmp_dirpath:
+                    package_filepath = utils.download(tmp_dirpath, package_url)
+                    add(
+                        package_filepath,
+                        ask_confirmation=False,
+                        dest_dirpath=distro_dirpath,
+                    )
+
+
+def extract_package_url_ubuntu(distro, arch, package):
+    url = f"https://packages.ubuntu.com/{distro}/{arch}/{package}/download"
+    with urllib.request.urlopen(url) as u:
+        try:
+            package_url = (
+                re.search(br"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", u.read())
+                .group("url")
+                .decode("ascii")
+            )
+            return package_url
+        except AttributeError:
+            print(
+                f"{colorama.Style.BRIGHT}{colorama.Fore.RED}Problems on: {url}{colorama.Style.RESET_ALL}"
+            )
+            return None
 
 
 def rebuild():
