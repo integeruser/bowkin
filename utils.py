@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
+import os
 import re
 import shlex
 import subprocess
+import urllib.request
 
 import colorama
 import elftools.elf.elffile
@@ -39,3 +41,11 @@ def get_libc_dbg_proper_filename(libc_filepath):
         data = elf.get_section_by_name(".gnu_debuglink").data()
         libc_dbg_filename = data[: data.index(b"\0")].decode("ascii")
         return libc_dbg_filename
+
+
+def download(dirpath, url):
+    print(f"Downloading: {colorama.Style.BRIGHT}{url}{colorama.Style.RESET_ALL}")
+    filepath, _ = urllib.request.urlretrieve(
+        url, filename=os.path.join(dirpath, os.path.basename(url))
+    )
+    return filepath
