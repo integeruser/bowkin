@@ -26,7 +26,7 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
         re.match(pattern, package_filename)
         for pattern in (
             "libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb).*?)_(?P<arch>i386|amd64).deb",
-            "glibc-(?P<version>\d.\d+-\d)-(?P<arch>i686|x86_64).pkg.tar.xz",
+            "glibc-(?P<version>\d.\d+-\d+)-(?P<arch>i686|x86_64).pkg.tar.xz",
         )
     ]
 
