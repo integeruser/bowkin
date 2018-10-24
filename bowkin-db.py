@@ -25,7 +25,7 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
     matches = [
         re.match(pattern, package_filename)
         for pattern in (
-            "libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb).*?)_(?P<arch>i386|amd64).deb",
+            "libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb).*?)_(?P<arch>i386|amd64|armel|armhf|arm64).deb",
             "glibc-(?P<version>\d.\d+-\d+)-(?P<arch>i686|x86_64).pkg.tar.xz",
         )
     ]
@@ -33,6 +33,9 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
     try:
         match = next(match for match in matches if match is not None)
     except StopIteration:
+        utils.bright_message(
+            "Can't extract the libc and loader from the specified package"
+        )
         return
     extract(package_filepath, match, dest_dirpath)
 
@@ -57,21 +60,19 @@ def extract(package_filepath, match, dest_dirpath):
             shell=True,
             check=True,
         )
-
-        # extract ld
-        ld_filepath = extract_ld_filepath(tmp_dirpath)
-        if ld_filepath:
-            proper_ld_filename = f"ld-{libc_arch}-{libc_version}.so"
-            proper_ld_filepath = os.path.join(dest_dirpath, proper_ld_filename)
-            shutil.copy2(ld_filepath, proper_ld_filepath)
-            ld_relpath = os.path.relpath(proper_ld_filepath, bowkin.libcs_dirpath)
-            print(
-                f"Saved: {colorama.Style.BRIGHT}.../{ld_relpath}{colorama.Style.RESET_ALL}"
-            )
-
         # extract libc
         libc_filepath = extract_libc_filepath(tmp_dirpath)
+        if bowkin.identify(libc_filepath):  # is already present?
+            utils.bright_message(
+                "The libc and loader are already presents", colorama.Fore.RED
+            )
+            return
+
+        saved_something = False
+
         if libc_filepath:
+            saved_something = True
+
             proper_libc_filename = f"libc-{libc_arch}-{libc_version}.so"
             proper_libc_filepath = os.path.join(dest_dirpath, proper_libc_filename)
             shutil.copy2(libc_filepath, proper_libc_filepath)
@@ -80,9 +81,24 @@ def extract(package_filepath, match, dest_dirpath):
                 f"Saved: {colorama.Style.BRIGHT}.../{libc_relpath}{colorama.Style.RESET_ALL}"
             )
 
+        # extract ld
+        ld_filepath = extract_ld_filepath(tmp_dirpath)
+        if ld_filepath:
+            saved_something = True
+
+            proper_ld_filename = f"ld-{libc_arch}-{libc_version}.so"
+            proper_ld_filepath = os.path.join(dest_dirpath, proper_ld_filename)
+            shutil.copy2(ld_filepath, proper_ld_filepath)
+            ld_relpath = os.path.relpath(proper_ld_filepath, bowkin.libcs_dirpath)
+            print(
+                f"Saved: {colorama.Style.BRIGHT}.../{ld_relpath}{colorama.Style.RESET_ALL}"
+            )
+
         # extract libc symbols
         libc_symbols_filepath = extract_libc_symbols_filepath(tmp_dirpath)
         if libc_symbols_filepath:
+            saved_something = True
+
             proper_libc_symbols_filename = f"libc-{libc_arch}-{libc_version}.so.debug"
             proper_libc_symbols_filepath = os.path.join(
                 dest_dirpath, proper_libc_symbols_filename
@@ -95,10 +111,19 @@ def extract(package_filepath, match, dest_dirpath):
                 f"Saved: {colorama.Style.BRIGHT}.../{libc_symbols_relpath}{colorama.Style.RESET_ALL}"
             )
 
+        if not saved_something:
+            utils.bright_message(
+                "Cannot find libc, ld or symbols. Open an issue with a link for the package that you used",
+                colorama.Fore.RED,
+            )
+
 
 def extract_ld_filepath(tmp_dirpath):
     ld_filepath = None
     for path in (
+        "lib/aarch64-linux-gnu/ld-*.so",
+        "lib/arm-linux-gnueabihf/ld-*.so",
+        "lib/arm-linux-gnueabi/ld-*.so",
         "lib/i386-linux-gnu/ld-*.so",
         "lib/x86_64-linux-gnu/ld-*.so",
         "usr/lib/ld-*.so",
@@ -114,6 +139,9 @@ def extract_ld_filepath(tmp_dirpath):
 def extract_libc_filepath(tmp_dirpath):
     libc_filepath = None
     for path in (
+        "lib/aarch64-linux-gnu/libc-*.so",
+        "lib/arm-linux-gnueabihf/libc-*.so",
+        "lib/arm-linux-gnueabi/libc-*.so",
         "lib/i386-linux-gnu/libc-*.so",
         "lib/x86_64-linux-gnu/libc-*.so",
         "usr/lib/libc-*.so",
@@ -268,12 +296,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="action")
 
-    add_parser = subparsers.add_parser("add")
+    add_parser = subparsers.add_parser(
+        "add",
+        help="add to the libs folder the libc and the loader from the specified packet",
+    )
     add_parser.add_argument("package", type=argparse.FileType())
 
-    bootstrap_parser = subparsers.add_parser("bootstrap")
+    bootstrap_parser = subparsers.add_parser(
+        "bootstrap",
+        help="will download some libcs used in ubuntu, debian and arch linux",
+    )
 
-    rebuild_parser = subparsers.add_parser("rebuild")
+    rebuild_parser = subparsers.add_parser(
+        "rebuild", help="will rebuild the database using the added libcs"
+    )
 
     args = parser.parse_args()
 
@@ -285,3 +321,5 @@ if __name__ == "__main__":
         rebuild()
     elif args.action == "rebuild":
         rebuild()
+    else:
+        parser.print_help()
