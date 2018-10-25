@@ -277,10 +277,14 @@ def rebuild():
                 filepath,
             )
             if match:
+                relpath = os.path.relpath(filepath, bowkin.libcs_dirpath)
+                print(
+                    f"Adding: {colorama.Style.BRIGHT}.../{relpath}{colorama.Style.RESET_ALL}"
+                )
                 conn.execute(
                     "INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)",
                     (
-                        os.path.relpath(filepath, bowkin.libcs_dirpath),
+                        relpath,
                         match.group("architecture"),
                         match.group("distro"),
                         match.group("release"),
