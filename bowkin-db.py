@@ -273,14 +273,14 @@ def rebuild():
 
         for filepath in glob.glob(f"{bowkin.libcs_dirpath}/**", recursive=True):
             match = re.match(
-                r"(?:.*)libcs/(?P<relpath>(?P<distro>.+?)?/?(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so)$",
+                r"(?:.*?)libcs/(?:(?P<distro>.+?)/)?(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so$",
                 filepath,
             )
             if match:
                 conn.execute(
                     "INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)",
                     (
-                        match.group("relpath"),
+                        os.path.relpath(filepath, bowkin.libcs_dirpath),
                         match.group("architecture"),
                         match.group("distro"),
                         match.group("release"),
