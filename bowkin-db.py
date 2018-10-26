@@ -251,8 +251,7 @@ def rebuild():
         conn.execute("DROP TABLE IF EXISTS libcs")
         conn.execute(
             "CREATE TABLE libcs"
-            "(relpath text, architecture text, distro text, release text, version text, buildID text,"
-            "PRIMARY KEY(version, buildID))"
+            "(relpath text, architecture text, distro text, release text, version text, buildID text)"
         )
 
         for filepath in glob.glob(f"{utils.get_libcs_dirpath()}/**", recursive=True):
