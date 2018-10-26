@@ -21,7 +21,10 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
 
     package_filename = os.path.basename(package_filepath)
 
-    # e.g. libc6_2.23-0ubuntu10_amd64.deb or libc6_2.24-11+deb9u3_amd64.deb
+    # examples of supported packages:
+    # - libc6_2.23-0ubuntu10_amd64.deb
+    # - libc6_2.24-11+deb9u3_amd64.deb
+    # - glibc-2.23-3-x86_64.pkg.tar.xz
     matches = [
         re.match(pattern, package_filename)
         for pattern in (

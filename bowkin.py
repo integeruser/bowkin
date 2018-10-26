@@ -13,6 +13,8 @@ import elftools.elf.elffile
 
 import utils
 
+# ############################################################################ #
+
 
 def identify(libc_filepath):
     print(utils.make_bright("<identify>"))
@@ -33,6 +35,9 @@ def identify(libc_filepath):
 
     print(utils.make_bright("</identify>"))
     return matches
+
+
+# ############################################################################ #
 
 
 def find(symbols):
@@ -63,6 +68,9 @@ def find(symbols):
 
     print(utils.make_bright("</find>"))
     return matches
+
+
+# ############################################################################ #
 
 
 def patch(binary_filepath, supplied_libc_filepath):
@@ -149,6 +157,8 @@ def patch(binary_filepath, supplied_libc_filepath):
 
     print(utils.make_bright("</patch>"))
 
+
+# ############################################################################ #
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
