@@ -39,11 +39,6 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
             f"Aborting: the filename of the package did not match any supported pattern."
         )
 
-    extract(package_filepath, match, dest_dirpath)
-
-
-def extract(package_filepath, match, dest_dirpath):
-    package_filename = os.path.basename(package_filepath)
     libc_architecture = match.group("architecture")
     libc_version = match.group("version")
 
@@ -64,61 +59,64 @@ def extract(package_filepath, match, dest_dirpath):
             check=True,
         )
 
-        found_something = False
+        found_anything = False
 
         # find and add libc
-        libc_filepath = extract_libc_filepath(tmp_dirpath)
+        libc_filepath = find_libc(tmp_dirpath)
         if libc_filepath:
-            found_something = True
+            found_anything = True
 
-            proper_libc_filename = f"libc-{libc_architecture}-{libc_version}.so"
-            proper_libc_filepath = os.path.join(dest_dirpath, proper_libc_filename)
-            shutil.copy2(libc_filepath, proper_libc_filepath)
-            libc_relpath = os.path.relpath(proper_libc_filepath, bowkin.libcs_dirpath)
+            new_libc_filename = f"libc-{libc_architecture}-{libc_version}.so"
+            new_libc_filepath = os.path.join(dest_dirpath, new_libc_filename)
+            shutil.copy2(libc_filepath, new_libc_filepath)
+
+            libc_relpath = os.path.relpath(new_libc_filepath, bowkin.libcs_dirpath)
             print(
                 f"Saved: {colorama.Style.BRIGHT}.../{libc_relpath}{colorama.Style.RESET_ALL}"
             )
 
         # find and add ld
-        ld_filepath = extract_ld_filepath(tmp_dirpath)
+        ld_filepath = find_ld(tmp_dirpath)
         if ld_filepath:
-            found_something = True
+            found_anything = True
 
-            proper_ld_filename = f"ld-{libc_architecture}-{libc_version}.so"
-            proper_ld_filepath = os.path.join(dest_dirpath, proper_ld_filename)
-            shutil.copy2(ld_filepath, proper_ld_filepath)
-            ld_relpath = os.path.relpath(proper_ld_filepath, bowkin.libcs_dirpath)
+            new_ld_filename = f"ld-{libc_architecture}-{libc_version}.so"
+            new_ld_filepath = os.path.join(dest_dirpath, new_ld_filename)
+            shutil.copy2(ld_filepath, new_ld_filepath)
+
+            ld_relpath = os.path.relpath(new_ld_filepath, bowkin.libcs_dirpath)
             print(
                 f"Saved: {colorama.Style.BRIGHT}.../{ld_relpath}{colorama.Style.RESET_ALL}"
             )
 
         # find and add libc symbols
-        libc_symbols_filepath = extract_libc_symbols_filepath(tmp_dirpath)
+        libc_symbols_filepath = find_libc_symbols(tmp_dirpath)
         if libc_symbols_filepath:
-            found_something = True
+            found_anything = True
 
-            proper_libc_symbols_filename = (
+            new_libc_symbols_filename = (
                 f"libc-{libc_architecture}-{libc_version}.so.debug"
             )
-            proper_libc_symbols_filepath = os.path.join(
-                dest_dirpath, proper_libc_symbols_filename
+            new_libc_symbols_filepath = os.path.join(
+                dest_dirpath, new_libc_symbols_filename
             )
-            shutil.copy2(libc_symbols_filepath, proper_libc_symbols_filepath)
+            shutil.copy2(libc_symbols_filepath, new_libc_symbols_filepath)
+
             libc_symbols_relpath = os.path.relpath(
-                proper_libc_symbols_filepath, bowkin.libcs_dirpath
+                new_libc_symbols_filepath, bowkin.libcs_dirpath
             )
             print(
                 f"Saved: {colorama.Style.BRIGHT}.../{libc_symbols_relpath}{colorama.Style.RESET_ALL}"
             )
 
-        if not found_something:
+        if not found_anything:
             utils.bright_message(
                 "Cannot find libc, ld or symbols. Open an issue with a link for the package that you used",
                 colorama.Fore.RED,
             )
 
 
-def extract_ld_filepath(tmp_dirpath):
+def find_ld(tmp_dirpath):
     ld_filepath = None
     for path in (
         "lib/aarch64-linux-gnu/ld-*.so",
@@ -136,7 +134,7 @@ def extract_ld_filepath(tmp_dirpath):
     return None
 
 
-def extract_libc_filepath(tmp_dirpath):
+def find_libc(tmp_dirpath):
     libc_filepath = None
     for path in (
         "lib/aarch64-linux-gnu/libc-*.so",
@@ -154,7 +152,7 @@ def extract_libc_filepath(tmp_dirpath):
     return None
 
 
-def extract_libc_symbols_filepath(tmp_dirpath):
+def find_libc_symbols(tmp_dirpath):
     libc_symbols_filepath = None
     for path in (
         "usr/lib/debug/lib/i386-linux-gnu/libc-*.so",
