@@ -62,47 +62,50 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
         )
 
         # find and add ld
-        new_ld_filename = f"ld-{libc_architecture}-{libc_version}.so"
-        new_ld_filepath = find_matching_file_and_add_to_db(
-            tmp_dirpath,
-            (
+        ld_search_paths = [
+            os.path.join(tmp_dirpath, subpath)
+            for subpath in (
                 "lib/aarch64-linux-gnu/ld-*.so",
                 "lib/arm-linux-gnueabihf/ld-*.so",
                 "lib/arm-linux-gnueabi/ld-*.so",
                 "lib/i386-linux-gnu/ld-*.so",
                 "lib/x86_64-linux-gnu/ld-*.so",
                 "usr/lib/ld-*.so",
-            ),
-            dest_dirpath,
-            new_ld_filename,
+            )
+        ]
+        new_ld_filename = f"ld-{libc_architecture}-{libc_version}.so"
+        new_ld_filepath = find_matching_file_and_add_to_db(
+            ld_search_paths, dest_dirpath, new_ld_filename
         )
 
         # find and add libc
-        new_libc_filename = f"libc-{libc_architecture}-{libc_version}.so"
-        new_libc_filepath = find_matching_file_and_add_to_db(
-            tmp_dirpath,
-            (
+        libc_search_paths = [
+            os.path.join(tmp_dirpath, subpath)
+            for subpath in (
                 "lib/aarch64-linux-gnu/libc-*.so",
                 "lib/arm-linux-gnueabihf/libc-*.so",
                 "lib/arm-linux-gnueabi/libc-*.so",
                 "lib/i386-linux-gnu/libc-*.so",
                 "lib/x86_64-linux-gnu/libc-*.so",
                 "usr/lib/libc-*.so",
-            ),
-            dest_dirpath,
-            new_libc_filename,
+            )
+        ]
+        new_libc_filename = f"libc-{libc_architecture}-{libc_version}.so"
+        new_libc_filepath = find_matching_file_and_add_to_db(
+            libc_search_paths, dest_dirpath, new_libc_filename
         )
 
         # find and add libc symbols
-        new_libc_symbols_filename = f"libc-{libc_architecture}-{libc_version}.so.debug"
-        new_libc_symbols_filepath = find_matching_file_and_add_to_db(
-            tmp_dirpath,
-            (
+        libc_symbols_search_paths = [
+            os.path.join(tmp_dirpath, subpath)
+            for subpath in (
                 "usr/lib/debug/lib/i386-linux-gnu/libc-*.so",
                 "usr/lib/debug/lib/x86_64-linux-gnu/libc-*.so",
-            ),
-            dest_dirpath,
-            new_libc_symbols_filename,
+            )
+        ]
+        new_libc_symbols_filename = f"libc-{libc_architecture}-{libc_version}.so.debug"
+        new_libc_symbols_filepath = find_matching_file_and_add_to_db(
+            libc_symbols_search_paths, dest_dirpath, new_libc_symbols_filename
         )
 
         if not any((new_ld_filepath, new_libc_filepath, new_libc_symbols_filepath)):
@@ -111,8 +114,8 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
             )
 
 
-def find_matching_file_and_add_to_db(path, subpaths, dest_dirpath, new_filename):
-    filepath = find_matching_file(path, subpaths)
+def find_matching_file_and_add_to_db(search_paths, dest_dirpath, new_filename):
+    filepath = find_matching_file(search_paths)
     if not filepath:
         return None
 
@@ -124,10 +127,9 @@ def find_matching_file_and_add_to_db(path, subpaths, dest_dirpath, new_filename)
     return new_filepath
 
 
-def find_matching_file(path, subpaths):
-    filepath = None
-    for subpath in subpaths:
-        filepaths = glob.glob(os.path.join(path, subpath))
+def find_matching_file(paths):
+    for path in paths:
+        filepaths = glob.glob(path)
         if filepaths:
             assert len(filepaths) == 1
             filepath = filepaths[0]
@@ -293,7 +295,7 @@ if __name__ == "__main__":
 
     if args.action == "add":
         add(args.package.name)
-        # rebuild()
+        rebuild()
     elif args.action == "bootstrap":
         bootstrap(args.ubuntu_only)
         rebuild()
