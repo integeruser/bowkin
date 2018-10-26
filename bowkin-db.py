@@ -7,6 +7,7 @@ import shlex
 import shutil
 import sqlite3
 import subprocess
+import sys
 import tempfile
 import urllib.request
 
@@ -305,4 +306,4 @@ if __name__ == "__main__":
     elif args.action == "rebuild":
         rebuild()
     else:
-        parser.print_help()
+        parser.print_help(sys.stderr)

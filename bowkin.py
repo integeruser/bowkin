@@ -184,4 +184,4 @@ if __name__ == "__main__":
     elif args.action == "patch":
         patch(args.binary.name, args.libc.name)
     else:
-        parser.print_help()
+        parser.print_help(sys.stderr)
