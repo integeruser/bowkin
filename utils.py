@@ -16,6 +16,10 @@ def abort(message):
     raise SystemExit
 
 
+def make_bright(text):
+    return f"{colorama.Style.BRIGHT}{text}{colorama.Style.RESET_ALL}"
+
+
 def bright_message(message, other_color=""):
     print(f"{colorama.Style.BRIGHT}{other_color}{message}{colorama.Style.RESET_ALL}")
 
