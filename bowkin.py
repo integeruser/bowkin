@@ -137,13 +137,6 @@ def patch(binary_filepath, supplied_libc_filepath):
     )
 
 
-def dump(libc):
-    libc["realpath"] = os.path.realpath(
-        os.path.join(utils.get_libcs_dirpath(), libc["relpath"])
-    )
-    print(json.dumps(libc, sort_keys=True, indent=4))
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="action")
@@ -173,11 +166,11 @@ if __name__ == "__main__":
 
     if args.action == "find":
         for libc in find(args.symbols):
-            dump(libc)
+            utils.dump(libc)
     elif args.action == "identify":
         libcs_identified = identify(args.libc.name)
         for libc in libcs_identified:
-            dump(libc)
+            utils.dump(libc)
         if not libcs_identified:
             utils.abort("The supplied libc is not in the database.")
     elif args.action == "patch":

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import os
 import re
 import shlex
@@ -57,6 +58,16 @@ def download(dirpath, url):
         url, filename=os.path.join(dirpath, os.path.basename(url))
     )
     return filepath
+
+
+# ############################################################################ #
+
+
+def dump(libc):
+    libc["realpath"] = os.path.realpath(
+        os.path.join(get_libcs_dirpath(), libc["relpath"])
+    )
+    print(json.dumps(libc, sort_keys=True, indent=4))
 
 
 # ############################################################################ #
