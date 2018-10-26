@@ -25,10 +25,6 @@ def make_warning(text):
     return f"{colorama.Fore.YELLOW}{text}{colorama.Style.RESET_ALL}"
 
 
-def bright_message(message, other_color=""):
-    print(f"{colorama.Style.BRIGHT}{other_color}{message}{colorama.Style.RESET_ALL}")
-
-
 def query_yes_no(question):
     return input("{} (y/[N]) ".format(question)).lower() in ("y", "yes")
 

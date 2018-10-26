@@ -9,7 +9,6 @@ import sqlite3
 import subprocess
 import sys
 
-import colorama
 import elftools.elf.elffile
 
 import utils
@@ -89,17 +88,17 @@ def patch(binary_filepath, supplied_libc_filepath):
     if not os.path.isfile(ld_filepath):
         utils.abort(
             "The dynamic loader corresponding to the libc to use cannot be found."
-            f" It should reside at {colorama.Style.BRIGHT}{ld_filepath}{colorama.Style.RESET_ALL}"
+            f" It should reside at {utils.make_bright(ld_filepath)}"
         )
 
     # copy the dynamic loader and the libc to the directory where the binary is located
     libs_dirpath = os.path.join(binary_dirpath, "libs")
     if not utils.query_yes_no(
         "Copy:\n"
-        f"- {colorama.Style.BRIGHT}{ld_filepath}{colorama.Style.RESET_ALL}\n"
-        f"- {colorama.Style.BRIGHT}{libc_filepath}{colorama.Style.RESET_ALL}\n"
+        f"- {utils.make_bright(ld_filepath)}\n"
+        f"- {utils.make_bright(libc_filepath)}\n"
         "to:\n"
-        f"- {colorama.Style.BRIGHT}{libs_dirpath}{colorama.Style.RESET_ALL}/\n"
+        f"- {utils.make_bright(libs_dirpath)}/\n"
         "?"
     ):
         utils.abort("Aborted by user.")
@@ -116,9 +115,9 @@ def patch(binary_filepath, supplied_libc_filepath):
         libc_dbg_proper_filepath = os.path.join(libs_dirpath, libc_dbg_proper_filename)
         if utils.query_yes_no(
             "Copy:\n"
-            f"- {colorama.Style.BRIGHT}{libc_dbg_filepath}{colorama.Style.RESET_ALL}\n"
+            f"- {utils.make_bright(libc_dbg_filepath)}"
             "to:\n"
-            f"- {colorama.Style.BRIGHT}{libc_dbg_proper_filepath}{colorama.Style.RESET_ALL}"
+            f"- {utils.make_bright(libc_dbg_proper_filepath)}"
             " (this particular name is required by GDB to add debug symbols automatically)\n"
             "?"
         ):
@@ -129,9 +128,9 @@ def patch(binary_filepath, supplied_libc_filepath):
     patched_binary_filepath = f"{binary_filepath}-{libc_version}"
     if not utils.query_yes_no(
         "Copy:\n"
-        f"- {colorama.Style.BRIGHT}{binary_filepath}{colorama.Style.RESET_ALL}\n"
+        f"- {utils.make_bright(binary_filepath)}\n"
         "to:\n"
-        f"- {colorama.Style.BRIGHT}{patched_binary_filepath}{colorama.Style.RESET_ALL}\n"
+        f"- {utils.make_bright(patched_binary_filepath)}\n"
         "and patch the latter?"
     ):
         utils.abort("Aborted by user.")

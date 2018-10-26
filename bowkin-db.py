@@ -10,8 +10,6 @@ import subprocess
 import tempfile
 import urllib.request
 
-import colorama
-
 import utils
 
 # ############################################################################ #
@@ -124,7 +122,8 @@ def find_matching_file_and_add_to_db(search_paths, dest_dirpath, new_filename):
     shutil.copy2(filepath, new_filepath)
 
     relpath = os.path.relpath(new_filepath, utils.get_libcs_dirpath())
-    print(f"Added: {colorama.Style.BRIGHT}.../{relpath}{colorama.Style.RESET_ALL}")
+
+    print(f"Added: {utils.make_bright(f'.../{relpath}')}")
     return new_filepath
 
 
@@ -146,7 +145,7 @@ def bootstrap(ubuntu_only):
 
     if not utils.query_yes_no(
         "This operation will download a bunch of libcs into"
-        f" {colorama.Style.BRIGHT}{utils.get_libcs_dirpath()}{colorama.Style.RESET_ALL}. Proceed?"
+        f" {utils.make_bright(utils.get_libcs_dirpath())}. Proceed?"
     ):
         utils.abort("Aborted by user.")
 
@@ -216,9 +215,7 @@ def extract_package_url_ubuntu_debian(url):
             )
             return package_url
         except AttributeError:
-            print(
-                f"{colorama.Style.BRIGHT}{colorama.Fore.RED}Problems on: {url}{colorama.Style.RESET_ALL}"
-            )
+            print(utils.make_warning(f"Problems on: {url}"))
             return None
 
 
@@ -235,9 +232,7 @@ def extract_package_urls_arch(url, architecture):
             ]
             return package_urls
         except AttributeError:
-            print(
-                f"{colorama.Style.BRIGHT}{colorama.Fore.RED}Problems on: {url}{colorama.Style.RESET_ALL}"
-            )
+            print(utils.make_warning(f"Problems on: {url}"))
             return []
 
 
@@ -261,9 +256,7 @@ def rebuild():
             )
             if match:
                 relpath = os.path.relpath(filepath, utils.get_libcs_dirpath())
-                print(
-                    f"Processing: {colorama.Style.BRIGHT}.../{relpath}{colorama.Style.RESET_ALL}"
-                )
+                print(f"Processing: {utils.make_bright(f'.../{relpath}')}")
                 conn.execute(
                     "INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)",
                     (
