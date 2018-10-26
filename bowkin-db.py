@@ -35,10 +35,10 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
     try:
         match = next(match for match in matches if match is not None)
     except StopIteration:
-        utils.bright_message(
-            "Can't extract the libc and loader from the specified package"
+        utils.abort(
+            f"Aborting: the filename of the package did not match any supported pattern."
         )
-        return
+
     extract(package_filepath, match, dest_dirpath)
 
 
@@ -50,30 +50,31 @@ def extract(package_filepath, match, dest_dirpath):
     with tempfile.TemporaryDirectory() as tmp_dirpath:
         shutil.copy2(package_filepath, tmp_dirpath)
 
+        # extract the package
         subprocess.run(
-            f"tar xf {shlex.quote(package_filename)}",
+            shlex.split(f"tar xf {shlex.quote(package_filename)}"),
             cwd=tmp_dirpath,
-            shell=True,
             check=True,
         )
+
+        # extract data.tar.?z if it exists
         subprocess.run(
-            f"if [ -f data.tar.?z ]; then tar xf data.tar.?z; fi",
+            shlex.split(f"if [ -f data.tar.?z ]; then tar xf data.tar.?z; fi"),
             cwd=tmp_dirpath,
-            shell=True,
             check=True,
         )
-        # extract libc
+
+        found_something = False
+
+        # find libc
         libc_filepath = extract_libc_filepath(tmp_dirpath)
         if bowkin.identify(libc_filepath):  # is already present?
             utils.bright_message(
                 "The libc and loader are already presents", colorama.Fore.RED
             )
             return
-
-        saved_something = False
-
         if libc_filepath:
-            saved_something = True
+            found_something = True
 
             proper_libc_filename = f"libc-{libc_architecture}-{libc_version}.so"
             proper_libc_filepath = os.path.join(dest_dirpath, proper_libc_filename)
@@ -83,10 +84,10 @@ def extract(package_filepath, match, dest_dirpath):
                 f"Saved: {colorama.Style.BRIGHT}.../{libc_relpath}{colorama.Style.RESET_ALL}"
             )
 
-        # extract ld
+        # find ld
         ld_filepath = extract_ld_filepath(tmp_dirpath)
         if ld_filepath:
-            saved_something = True
+            found_something = True
 
             proper_ld_filename = f"ld-{libc_architecture}-{libc_version}.so"
             proper_ld_filepath = os.path.join(dest_dirpath, proper_ld_filename)
@@ -96,10 +97,10 @@ def extract(package_filepath, match, dest_dirpath):
                 f"Saved: {colorama.Style.BRIGHT}.../{ld_relpath}{colorama.Style.RESET_ALL}"
             )
 
-        # extract libc symbols
+        # find libc symbols
         libc_symbols_filepath = extract_libc_symbols_filepath(tmp_dirpath)
         if libc_symbols_filepath:
-            saved_something = True
+            found_something = True
 
             proper_libc_symbols_filename = (
                 f"libc-{libc_architecture}-{libc_version}.so.debug"
@@ -115,7 +116,7 @@ def extract(package_filepath, match, dest_dirpath):
                 f"Saved: {colorama.Style.BRIGHT}.../{libc_symbols_relpath}{colorama.Style.RESET_ALL}"
             )
 
-        if not saved_something:
+        if not found_something:
             utils.bright_message(
                 "Cannot find libc, ld or symbols. Open an issue with a link for the package that you used",
                 colorama.Fore.RED,
