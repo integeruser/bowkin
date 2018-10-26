@@ -66,13 +66,8 @@ def extract(package_filepath, match, dest_dirpath):
 
         found_something = False
 
-        # find libc
+        # find and add libc
         libc_filepath = extract_libc_filepath(tmp_dirpath)
-        if bowkin.identify(libc_filepath):  # is already present?
-            utils.bright_message(
-                "The libc and loader are already presents", colorama.Fore.RED
-            )
-            return
         if libc_filepath:
             found_something = True
 
@@ -84,7 +79,7 @@ def extract(package_filepath, match, dest_dirpath):
                 f"Saved: {colorama.Style.BRIGHT}.../{libc_relpath}{colorama.Style.RESET_ALL}"
             )
 
-        # find ld
+        # find and add ld
         ld_filepath = extract_ld_filepath(tmp_dirpath)
         if ld_filepath:
             found_something = True
@@ -97,7 +92,7 @@ def extract(package_filepath, match, dest_dirpath):
                 f"Saved: {colorama.Style.BRIGHT}.../{ld_relpath}{colorama.Style.RESET_ALL}"
             )
 
-        # find libc symbols
+        # find and add libc symbols
         libc_symbols_filepath = extract_libc_symbols_filepath(tmp_dirpath)
         if libc_symbols_filepath:
             found_something = True
