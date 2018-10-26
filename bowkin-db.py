@@ -61,34 +61,9 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
             shell=True,
         )
 
-        found_anything = False
-
-        # find and add libc
-        libc_filepath = find_any_in_subpaths(
-            tmp_dirpath,
-            (
-                "lib/aarch64-linux-gnu/libc-*.so",
-                "lib/arm-linux-gnueabihf/libc-*.so",
-                "lib/arm-linux-gnueabi/libc-*.so",
-                "lib/i386-linux-gnu/libc-*.so",
-                "lib/x86_64-linux-gnu/libc-*.so",
-                "usr/lib/libc-*.so",
-            ),
-        )
-        if libc_filepath:
-            found_anything = True
-
-            new_libc_filename = f"libc-{libc_architecture}-{libc_version}.so"
-            new_libc_filepath = os.path.join(dest_dirpath, new_libc_filename)
-            shutil.copy2(libc_filepath, new_libc_filepath)
-
-            libc_relpath = os.path.relpath(new_libc_filepath, bowkin.libcs_dirpath)
-            print(
-                f"Saved: {colorama.Style.BRIGHT}.../{libc_relpath}{colorama.Style.RESET_ALL}"
-            )
-
         # find and add ld
-        ld_filepath = find_any_in_subpaths(
+        new_ld_filename = f"ld-{libc_architecture}-{libc_version}.so"
+        new_ld_filepath = find_matching_file_and_add_to_db(
             tmp_dirpath,
             (
                 "lib/aarch64-linux-gnu/ld-*.so",
@@ -98,53 +73,58 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
                 "lib/x86_64-linux-gnu/ld-*.so",
                 "usr/lib/ld-*.so",
             ),
+            dest_dirpath,
+            new_ld_filename,
         )
-        if ld_filepath:
-            found_anything = True
 
-            new_ld_filename = f"ld-{libc_architecture}-{libc_version}.so"
-            new_ld_filepath = os.path.join(dest_dirpath, new_ld_filename)
-            shutil.copy2(ld_filepath, new_ld_filepath)
-
-            ld_relpath = os.path.relpath(new_ld_filepath, bowkin.libcs_dirpath)
-            print(
-                f"Saved: {colorama.Style.BRIGHT}.../{ld_relpath}{colorama.Style.RESET_ALL}"
-            )
+        # find and add libc
+        new_libc_filename = f"libc-{libc_architecture}-{libc_version}.so"
+        new_libc_filepath = find_matching_file_and_add_to_db(
+            tmp_dirpath,
+            (
+                "lib/aarch64-linux-gnu/libc-*.so",
+                "lib/arm-linux-gnueabihf/libc-*.so",
+                "lib/arm-linux-gnueabi/libc-*.so",
+                "lib/i386-linux-gnu/libc-*.so",
+                "lib/x86_64-linux-gnu/libc-*.so",
+                "usr/lib/libc-*.so",
+            ),
+            dest_dirpath,
+            new_libc_filename,
+        )
 
         # find and add libc symbols
-        libc_symbols_filepath = find_any_in_subpaths(
+        new_libc_symbols_filename = f"libc-{libc_architecture}-{libc_version}.so.debug"
+        new_libc_symbols_filepath = find_matching_file_and_add_to_db(
             tmp_dirpath,
             (
                 "usr/lib/debug/lib/i386-linux-gnu/libc-*.so",
                 "usr/lib/debug/lib/x86_64-linux-gnu/libc-*.so",
             ),
+            dest_dirpath,
+            new_libc_symbols_filename,
         )
-        if libc_symbols_filepath:
-            found_anything = True
 
-            new_libc_symbols_filename = (
-                f"libc-{libc_architecture}-{libc_version}.so.debug"
-            )
-            new_libc_symbols_filepath = os.path.join(
-                dest_dirpath, new_libc_symbols_filename
-            )
-            shutil.copy2(libc_symbols_filepath, new_libc_symbols_filepath)
-
-            libc_symbols_relpath = os.path.relpath(
-                new_libc_symbols_filepath, bowkin.libcs_dirpath
-            )
-            print(
-                f"Saved: {colorama.Style.BRIGHT}.../{libc_symbols_relpath}{colorama.Style.RESET_ALL}"
-            )
-
-        if not found_anything:
-            utils.bright_message(
-                "Cannot find libc, ld or symbols. Open an issue with a link for the package that you used",
-                colorama.Fore.RED,
+        if not any((new_ld_filepath, new_libc_filepath, new_libc_symbols_filepath)):
+            utils.abort(
+                "Aborting: the package seems to not contain a dynamic loader, libc or debug symbols."
             )
 
 
-def find_any_in_subpaths(path, subpaths):
+def find_matching_file_and_add_to_db(path, subpaths, dest_dirpath, new_filename):
+    filepath = find_matching_file(path, subpaths)
+    if not filepath:
+        return None
+
+    new_filepath = os.path.join(dest_dirpath, new_filename)
+    shutil.copy2(filepath, new_filepath)
+
+    relpath = os.path.relpath(new_filepath, bowkin.libcs_dirpath)
+    print(f"Added: {colorama.Style.BRIGHT}.../{relpath}{colorama.Style.RESET_ALL}")
+    return new_filepath
+
+
+def find_matching_file(path, subpaths):
     filepath = None
     for subpath in subpaths:
         filepaths = glob.glob(os.path.join(path, subpath))
@@ -313,7 +293,7 @@ if __name__ == "__main__":
 
     if args.action == "add":
         add(args.package.name)
-        rebuild()
+        # rebuild()
     elif args.action == "bootstrap":
         bootstrap(args.ubuntu_only)
         rebuild()
