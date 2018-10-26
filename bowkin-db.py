@@ -47,16 +47,18 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
 
         # extract the package
         subprocess.run(
-            shlex.split(f"tar xf {shlex.quote(package_filename)}"),
+            f"tar xf {shlex.quote(package_filename)}",
             cwd=tmp_dirpath,
             check=True,
+            shell=True,
         )
 
         # extract data.tar.?z if it exists
         subprocess.run(
-            shlex.split(f"if [ -f data.tar.?z ]; then tar xf data.tar.?z; fi"),
+            f"if [ -f data.tar.?z ]; then tar xf data.tar.?z; fi",
             cwd=tmp_dirpath,
             check=True,
+            shell=True,
         )
 
         found_anything = False
