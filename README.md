@@ -11,7 +11,7 @@ $ pip3 install -r requirements.txt
 ## Installation
 1. Clone this repository: `git clone https://github.com/integeruser/bowkin.git ~/.bowkin`
 2. (Optional) For convenience, add `bowkin.py` and `bowkin-db.py` to the `PATH` (e.g. `ln -s ~/bowkin/bowkin.py /usr/local/bin/bowkin` and `ln -s ~/bowkin/bowkin-db.py /usr/local/bin/bowkin-db`)
-3. Download a bunch of libcs: `bowkin-db bootstrap`
+3. Download a bunch of libcs: `bowkin-db bootstrap --ubuntu-only`
 4. Rebuild the database: `bowkin-db rebuild`
 
 

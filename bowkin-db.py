@@ -171,7 +171,7 @@ def extract_libc_symbols_filepath(tmp_dirpath):
 # ############################################################################ #
 
 
-def bootstrap():
+def bootstrap(ubuntu_only):
     if not utils.query_yes_no(
         "This operation will download a bunch of libcs into"
         f" {colorama.Style.BRIGHT}{bowkin.libcs_dirpath}{colorama.Style.RESET_ALL}. Proceed?"
@@ -194,6 +194,8 @@ def bootstrap():
                 with tempfile.TemporaryDirectory() as tmp_dirpath:
                     package_filepath = utils.download(tmp_dirpath, package_url)
                     add(package_filepath, dest_dirpath=release_dirpath)
+    if ubuntu_only:
+        return
 
     # Debian
     distro_dirpath = os.path.join(bowkin.libcs_dirpath, "debian")
@@ -310,6 +312,7 @@ if __name__ == "__main__":
         "bootstrap",
         help="will download some libcs used in ubuntu, debian and arch linux",
     )
+    bootstrap_parser.add_argument("--ubuntu-only", action="store_true")
 
     rebuild_parser = subparsers.add_parser(
         "rebuild", help="will rebuild the database using the added libcs"
@@ -321,7 +324,7 @@ if __name__ == "__main__":
         add(args.package.name)
         rebuild()
     elif args.action == "bootstrap":
-        bootstrap()
+        bootstrap(args.ubuntu_only)
         rebuild()
     elif args.action == "rebuild":
         rebuild()
