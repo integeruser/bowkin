@@ -12,13 +12,12 @@ import urllib.request
 
 import colorama
 
-import bowkin
 import utils
 
 # ############################################################################ #
 
 
-def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
+def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
     print(utils.make_bright("[add]"))
 
     package_filename = os.path.basename(package_filepath)
@@ -122,7 +121,7 @@ def find_matching_file_and_add_to_db(search_paths, dest_dirpath, new_filename):
     new_filepath = os.path.join(dest_dirpath, new_filename)
     shutil.copy2(filepath, new_filepath)
 
-    relpath = os.path.relpath(new_filepath, bowkin.libcs_dirpath)
+    relpath = os.path.relpath(new_filepath, utils.get_libcs_dirpath())
     print(f"Added: {colorama.Style.BRIGHT}.../{relpath}{colorama.Style.RESET_ALL}")
     return new_filepath
 
@@ -145,12 +144,12 @@ def bootstrap(ubuntu_only):
 
     if not utils.query_yes_no(
         "This operation will download a bunch of libcs into"
-        f" {colorama.Style.BRIGHT}{bowkin.libcs_dirpath}{colorama.Style.RESET_ALL}. Proceed?"
+        f" {colorama.Style.BRIGHT}{utils.get_libcs_dirpath()}{colorama.Style.RESET_ALL}. Proceed?"
     ):
         utils.abort("Aborted by user.")
 
     # Ubuntu
-    distro_dirpath = os.path.join(bowkin.libcs_dirpath, "ubuntu")
+    distro_dirpath = os.path.join(utils.get_libcs_dirpath(), "ubuntu")
     os.makedirs(distro_dirpath, exist_ok=True)
     for release in ("trusty", "xenial", "artful", "bionic"):
         release_dirpath = os.path.join(distro_dirpath, release)
@@ -169,7 +168,7 @@ def bootstrap(ubuntu_only):
         return
 
     # Debian
-    distro_dirpath = os.path.join(bowkin.libcs_dirpath, "debian")
+    distro_dirpath = os.path.join(utils.get_libcs_dirpath(), "debian")
     os.makedirs(distro_dirpath, exist_ok=True)
     for release in ("squeeze", "wheezy", "jessie", "stretch"):
         release_dirpath = os.path.join(distro_dirpath, release)
@@ -186,7 +185,7 @@ def bootstrap(ubuntu_only):
                     add(package_filepath, dest_dirpath=release_dirpath)
 
     # Arch Linux
-    distro_dirpath = os.path.join(bowkin.libcs_dirpath, "arch")
+    distro_dirpath = os.path.join(utils.get_libcs_dirpath(), "arch")
     os.makedirs(distro_dirpath, exist_ok=True)
     for architecture in ("i686", "x86_64"):
         url = "https://archive.archlinux.org/packages/g/glibc/"
@@ -238,7 +237,7 @@ def extract_package_urls_arch(url, architecture):
 def rebuild():
     print(utils.make_bright("[rebuild]"))
 
-    with sqlite3.connect(bowkin.libcs_db_filepath) as conn:
+    with sqlite3.connect(utils.get_libcs_db_filepath()) as conn:
         conn.execute("DROP TABLE IF EXISTS libcs")
         conn.execute(
             "CREATE TABLE libcs"
@@ -246,13 +245,13 @@ def rebuild():
             "PRIMARY KEY(version, buildID))"
         )
 
-        for filepath in glob.glob(f"{bowkin.libcs_dirpath}/**", recursive=True):
+        for filepath in glob.glob(f"{utils.get_libcs_dirpath()}/**", recursive=True):
             match = re.match(
                 r"(?:.*?)libcs/(?:(?P<distro>.+?)/)?(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so$",
                 filepath,
             )
             if match:
-                relpath = os.path.relpath(filepath, bowkin.libcs_dirpath)
+                relpath = os.path.relpath(filepath, utils.get_libcs_dirpath())
                 print(
                     f"Adding: {colorama.Style.BRIGHT}.../{relpath}{colorama.Style.RESET_ALL}"
                 )

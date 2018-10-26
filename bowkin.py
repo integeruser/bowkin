@@ -18,7 +18,7 @@ import utils
 def identify(libc_filepath):
     print(utils.make_bright("[identify]"))
 
-    with sqlite3.connect(libcs_db_filepath) as conn:
+    with sqlite3.connect(utils.get_libcs_db_filepath()) as conn:
         conn.row_factory = sqlite3.Row
         return [
             dict(libc)
@@ -33,10 +33,10 @@ def find(symbols):
     print(utils.make_bright("[find]"))
 
     matches = []
-    with sqlite3.connect(libcs_db_filepath) as conn:
+    with sqlite3.connect(utils.get_libcs_db_filepath()) as conn:
         conn.row_factory = sqlite3.Row
         for libc in conn.execute("SELECT * FROM libcs"):
-            libc_filepath = os.path.join(libcs_dirpath, libc["relpath"])
+            libc_filepath = os.path.join(utils.get_libcs_dirpath(), libc["relpath"])
             with open(libc_filepath, "rb") as f:
                 elf = elftools.elf.elffile.ELFFile(f)
                 dynsym_section = elf.get_section_by_name(".dynsym")
@@ -66,7 +66,7 @@ def patch(binary_filepath, supplied_libc_filepath):
     # TODO pick the first for now
     libc = matches[0]
 
-    libc_filepath = os.path.join(libcs_dirpath, libc["relpath"])
+    libc_filepath = os.path.join(utils.get_libcs_dirpath(), libc["relpath"])
     libc_version = libc["version"]
 
     ld_filepath = os.path.join(
@@ -138,16 +138,11 @@ def patch(binary_filepath, supplied_libc_filepath):
 
 
 def dump(libc):
-    libc["realpath"] = os.path.realpath(os.path.join(libcs_dirpath, libc["relpath"]))
+    libc["realpath"] = os.path.realpath(
+        os.path.join(utils.get_libcs_dirpath(), libc["relpath"])
+    )
     print(json.dumps(libc, sort_keys=True, indent=4))
 
-
-# bowkin assumes either the directory `libcs` or a symlink to it can be found
-# in the same directory of this script
-libcs_dirpath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "libcs")
-libcs_db_filepath = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), "libcs.db"
-)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

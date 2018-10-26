@@ -57,3 +57,18 @@ def download(dirpath, url):
         url, filename=os.path.join(dirpath, os.path.basename(url))
     )
     return filepath
+
+
+# ############################################################################ #
+
+
+def get_libcs_dirpath():
+    # bowkin assumes either the directory `libcs` or a symlink to it can be found
+    # in the same directory of this script
+    libcs_dirpath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "libcs")
+    return libcs_dirpath
+
+
+def get_libcs_db_filepath():
+    libcs_db_filepath = os.path.join(os.path.dirname(get_libcs_dirpath()), "libcs.db")
+    return libcs_db_filepath
