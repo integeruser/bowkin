@@ -27,8 +27,8 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
     matches = [
         re.match(pattern, package_filename)
         for pattern in (
-            "libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb).*?)_(?P<arch>i386|amd64|armel|armhf|arm64).deb",
-            "glibc-(?P<version>\d.\d+-\d+)-(?P<arch>i686|x86_64).pkg.tar.xz",
+            "libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb).*?)_(?P<architecture>i386|amd64|armel|armhf|arm64).deb",
+            "glibc-(?P<version>\d.\d+-\d+)-(?P<architecture>i686|x86_64).pkg.tar.xz",
         )
     ]
 
@@ -44,7 +44,7 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
 
 def extract(package_filepath, match, dest_dirpath):
     package_filename = os.path.basename(package_filepath)
-    libc_arch = match.group("arch")
+    libc_architecture = match.group("architecture")
     libc_version = match.group("version")
 
     with tempfile.TemporaryDirectory() as tmp_dirpath:
@@ -75,7 +75,7 @@ def extract(package_filepath, match, dest_dirpath):
         if libc_filepath:
             saved_something = True
 
-            proper_libc_filename = f"libc-{libc_arch}-{libc_version}.so"
+            proper_libc_filename = f"libc-{libc_architecture}-{libc_version}.so"
             proper_libc_filepath = os.path.join(dest_dirpath, proper_libc_filename)
             shutil.copy2(libc_filepath, proper_libc_filepath)
             libc_relpath = os.path.relpath(proper_libc_filepath, bowkin.libcs_dirpath)
@@ -88,7 +88,7 @@ def extract(package_filepath, match, dest_dirpath):
         if ld_filepath:
             saved_something = True
 
-            proper_ld_filename = f"ld-{libc_arch}-{libc_version}.so"
+            proper_ld_filename = f"ld-{libc_architecture}-{libc_version}.so"
             proper_ld_filepath = os.path.join(dest_dirpath, proper_ld_filename)
             shutil.copy2(ld_filepath, proper_ld_filepath)
             ld_relpath = os.path.relpath(proper_ld_filepath, bowkin.libcs_dirpath)
@@ -101,7 +101,9 @@ def extract(package_filepath, match, dest_dirpath):
         if libc_symbols_filepath:
             saved_something = True
 
-            proper_libc_symbols_filename = f"libc-{libc_arch}-{libc_version}.so.debug"
+            proper_libc_symbols_filename = (
+                f"libc-{libc_architecture}-{libc_version}.so.debug"
+            )
             proper_libc_symbols_filepath = os.path.join(
                 dest_dirpath, proper_libc_symbols_filename
             )
@@ -188,10 +190,10 @@ def bootstrap(ubuntu_only):
     for release in ("trusty", "xenial", "artful", "bionic"):
         release_dirpath = os.path.join(distro_dirpath, release)
         os.makedirs(release_dirpath, exist_ok=True)
-        for arch in ("i386", "amd64"):
+        for architecture in ("i386", "amd64"):
             for package in ("libc6", "libc6-dbg"):
                 print()
-                url = f"https://packages.ubuntu.com/{release}/{arch}/{package}/download"
+                url = f"https://packages.ubuntu.com/{release}/{architecture}/{package}/download"
                 package_url = extract_package_url_ubuntu_debian(url)
                 if not package_url:
                     continue
@@ -207,10 +209,10 @@ def bootstrap(ubuntu_only):
     for release in ("squeeze", "wheezy", "jessie", "stretch"):
         release_dirpath = os.path.join(distro_dirpath, release)
         os.makedirs(release_dirpath, exist_ok=True)
-        for arch in ("i386", "amd64"):
+        for architecture in ("i386", "amd64"):
             for package in ("libc6", "libc6-dbg"):
                 print()
-                url = f"https://packages.debian.org/{release}/{arch}/{package}/download"
+                url = f"https://packages.debian.org/{release}/{architecture}/{package}/download"
                 package_url = extract_package_url_ubuntu_debian(url)
                 if not package_url:
                     continue
@@ -221,9 +223,9 @@ def bootstrap(ubuntu_only):
     # Arch Linux
     distro_dirpath = os.path.join(bowkin.libcs_dirpath, "arch")
     os.makedirs(distro_dirpath, exist_ok=True)
-    for arch in ("i686", "x86_64"):
+    for architecture in ("i686", "x86_64"):
         url = "https://archive.archlinux.org/packages/g/glibc/"
-        for package_url in extract_package_urls_arch(url, arch):
+        for package_url in extract_package_urls_arch(url, architecture):
             print()
             with tempfile.TemporaryDirectory() as tmp_dirpath:
                 package_filepath = utils.download(tmp_dirpath, package_url)
@@ -246,11 +248,11 @@ def extract_package_url_ubuntu_debian(url):
             return None
 
 
-def extract_package_urls_arch(url, arch):
+def extract_package_urls_arch(url, architecture):
     with urllib.request.urlopen(url) as u:
         try:
             package_filenames = re.findall(
-                fr"['\"](?P<package_filename>glibc-(?:.*?)-{arch}\.pkg\.tar\.[gx]z)['\"]",
+                fr"['\"](?P<package_filename>glibc-(?:.*?)-{architecture}\.pkg\.tar\.[gx]z)['\"]",
                 u.read().decode("ascii"),
             )
             package_urls = [
