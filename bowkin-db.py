@@ -64,7 +64,17 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
         found_anything = False
 
         # find and add libc
-        libc_filepath = find_libc(tmp_dirpath)
+        libc_filepath = find_any_in_subpaths(
+            tmp_dirpath,
+            (
+                "lib/aarch64-linux-gnu/libc-*.so",
+                "lib/arm-linux-gnueabihf/libc-*.so",
+                "lib/arm-linux-gnueabi/libc-*.so",
+                "lib/i386-linux-gnu/libc-*.so",
+                "lib/x86_64-linux-gnu/libc-*.so",
+                "usr/lib/libc-*.so",
+            ),
+        )
         if libc_filepath:
             found_anything = True
 
@@ -78,7 +88,17 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
             )
 
         # find and add ld
-        ld_filepath = find_ld(tmp_dirpath)
+        ld_filepath = find_any_in_subpaths(
+            tmp_dirpath,
+            (
+                "lib/aarch64-linux-gnu/ld-*.so",
+                "lib/arm-linux-gnueabihf/ld-*.so",
+                "lib/arm-linux-gnueabi/ld-*.so",
+                "lib/i386-linux-gnu/ld-*.so",
+                "lib/x86_64-linux-gnu/ld-*.so",
+                "usr/lib/ld-*.so",
+            ),
+        )
         if ld_filepath:
             found_anything = True
 
@@ -92,7 +112,13 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
             )
 
         # find and add libc symbols
-        libc_symbols_filepath = find_libc_symbols(tmp_dirpath)
+        libc_symbols_filepath = find_any_in_subpaths(
+            tmp_dirpath,
+            (
+                "usr/lib/debug/lib/i386-linux-gnu/libc-*.so",
+                "usr/lib/debug/lib/x86_64-linux-gnu/libc-*.so",
+            ),
+        )
         if libc_symbols_filepath:
             found_anything = True
 
@@ -118,53 +144,14 @@ def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
             )
 
 
-def find_ld(tmp_dirpath):
-    ld_filepath = None
-    for path in (
-        "lib/aarch64-linux-gnu/ld-*.so",
-        "lib/arm-linux-gnueabihf/ld-*.so",
-        "lib/arm-linux-gnueabi/ld-*.so",
-        "lib/i386-linux-gnu/ld-*.so",
-        "lib/x86_64-linux-gnu/ld-*.so",
-        "usr/lib/ld-*.so",
-    ):
-        ld_filepaths = glob.glob(os.path.join(tmp_dirpath, path))
-        if ld_filepaths:
-            assert len(ld_filepaths) == 1
-            ld_filepath = ld_filepaths[0]
-            return ld_filepath
-    return None
-
-
-def find_libc(tmp_dirpath):
-    libc_filepath = None
-    for path in (
-        "lib/aarch64-linux-gnu/libc-*.so",
-        "lib/arm-linux-gnueabihf/libc-*.so",
-        "lib/arm-linux-gnueabi/libc-*.so",
-        "lib/i386-linux-gnu/libc-*.so",
-        "lib/x86_64-linux-gnu/libc-*.so",
-        "usr/lib/libc-*.so",
-    ):
-        libc_filepaths = glob.glob(os.path.join(tmp_dirpath, path))
-        if libc_filepaths:
-            assert len(libc_filepaths) == 1
-            libc_filepath = libc_filepaths[0]
-            return libc_filepath
-    return None
-
-
-def find_libc_symbols(tmp_dirpath):
-    libc_symbols_filepath = None
-    for path in (
-        "usr/lib/debug/lib/i386-linux-gnu/libc-*.so",
-        "usr/lib/debug/lib/x86_64-linux-gnu/libc-*.so",
-    ):
-        libc_symbols_filepaths = glob.glob(os.path.join(tmp_dirpath, path))
-        if libc_symbols_filepaths:
-            assert len(libc_symbols_filepaths) == 1
-            libc_symbols_filepath = libc_symbols_filepaths[0]
-            return libc_symbols_filepath
+def find_any_in_subpaths(path, subpaths):
+    filepath = None
+    for subpath in subpaths:
+        filepaths = glob.glob(os.path.join(path, subpath))
+        if filepaths:
+            assert len(filepaths) == 1
+            filepath = filepaths[0]
+            return filepath
     return None
 
 
