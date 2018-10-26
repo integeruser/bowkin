@@ -18,7 +18,7 @@ import utils
 
 
 def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
-    print(utils.make_bright("[add]"))
+    print(utils.make_bright("<add>"))
 
     package_filename = os.path.basename(package_filepath)
 
@@ -35,7 +35,7 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
         match = next(match for match in matches if match is not None)
     except StopIteration:
         utils.abort(
-            f"Aborting: the filename of the package did not match any supported pattern."
+            f"Aborting: the filename of the package did not match any supported patterns."
         )
 
     libc_architecture = match.group("architecture")
@@ -112,6 +112,8 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
                 "Aborting: the package seems to not contain a dynamic loader, libc or debug symbols."
             )
 
+    print(utils.make_bright("</add>"))
+
 
 def find_matching_file_and_add_to_db(search_paths, dest_dirpath, new_filename):
     filepath = find_matching_file(search_paths)
@@ -140,7 +142,7 @@ def find_matching_file(paths):
 
 
 def bootstrap(ubuntu_only):
-    print(utils.make_bright("[bootstrap]"))
+    print(utils.make_bright("<bootstrap>"))
 
     if not utils.query_yes_no(
         "This operation will download a bunch of libcs into"
@@ -152,6 +154,8 @@ def bootstrap(ubuntu_only):
     if not ubuntu_only:
         add_debian_libcs()
         add_arch_linux_libcs()
+
+    print(utils.make_bright("</bootstrap>"))
 
 
 def add_ubuntu_libcs():
@@ -241,7 +245,7 @@ def extract_package_urls_arch(url, architecture):
 
 
 def rebuild():
-    print(utils.make_bright("[rebuild]"))
+    print(utils.make_bright("<rebuild>"))
 
     with sqlite3.connect(utils.get_libcs_db_filepath()) as conn:
         conn.execute("DROP TABLE IF EXISTS libcs")
@@ -259,7 +263,7 @@ def rebuild():
             if match:
                 relpath = os.path.relpath(filepath, utils.get_libcs_dirpath())
                 print(
-                    f"Adding: {colorama.Style.BRIGHT}.../{relpath}{colorama.Style.RESET_ALL}"
+                    f"Processing: {colorama.Style.BRIGHT}.../{relpath}{colorama.Style.RESET_ALL}"
                 )
                 conn.execute(
                     "INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)",
@@ -272,6 +276,8 @@ def rebuild():
                         utils.extract_buildID_from_file(filepath),
                     ),
                 )
+
+    print(utils.make_bright("</rebuild>"))
 
 
 # ############################################################################ #

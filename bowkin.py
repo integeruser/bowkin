@@ -16,11 +16,12 @@ import utils
 
 
 def identify(libc_filepath):
-    print(utils.make_bright("[identify]"))
+    print(utils.make_bright("<identify>"))
 
+    matches = []
     with sqlite3.connect(utils.get_libcs_db_filepath()) as conn:
         conn.row_factory = sqlite3.Row
-        return [
+        matches = [
             dict(libc)
             for libc in conn.execute(
                 "SELECT * FROM libcs where buildID=?",
@@ -28,9 +29,15 @@ def identify(libc_filepath):
             )
         ]
 
+    for libc in matches:
+        utils.dump(libc)
+
+    print(utils.make_bright("</identify>"))
+    return matches
+
 
 def find(symbols):
-    print(utils.make_bright("[find]"))
+    print(utils.make_bright("<find>"))
 
     matches = []
     with sqlite3.connect(utils.get_libcs_db_filepath()) as conn:
@@ -51,11 +58,16 @@ def find(symbols):
                         break
                 else:
                     matches.append(dict(libc))
+
+    for libc in matches:
+        utils.dump(libc)
+
+    print(utils.make_bright("</find>"))
     return matches
 
 
 def patch(binary_filepath, supplied_libc_filepath):
-    print(utils.make_bright("[patch]"))
+    print(utils.make_bright("<patch>"))
 
     binary_dirpath = os.path.dirname(binary_filepath)
 
@@ -136,6 +148,8 @@ def patch(binary_filepath, supplied_libc_filepath):
         shell=True,
     )
 
+    print(utils.make_bright("</patch>"))
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -165,14 +179,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.action == "find":
-        for libc in find(args.symbols):
-            utils.dump(libc)
+        find(args.symbols)
     elif args.action == "identify":
-        libcs_identified = identify(args.libc.name)
-        for libc in libcs_identified:
-            utils.dump(libc)
-        if not libcs_identified:
-            utils.abort("The supplied libc is not in the database.")
+        identify(args.libc.name)
     elif args.action == "patch":
         patch(args.binary.name, args.libc.name)
     else:
