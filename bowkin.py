@@ -16,6 +16,8 @@ import utils
 
 
 def identify(libc_filepath):
+    print(utils.make_bright("[identify]"))
+
     with sqlite3.connect(libcs_db_filepath) as conn:
         conn.row_factory = sqlite3.Row
         return [
@@ -28,6 +30,8 @@ def identify(libc_filepath):
 
 
 def find(symbols):
+    print(utils.make_bright("[find]"))
+
     matches = []
     with sqlite3.connect(libcs_db_filepath) as conn:
         conn.row_factory = sqlite3.Row
@@ -51,6 +55,8 @@ def find(symbols):
 
 
 def patch(binary_filepath, supplied_libc_filepath):
+    print(utils.make_bright("[patch]"))
+
     binary_dirpath = os.path.dirname(binary_filepath)
 
     # identify the supplied libc

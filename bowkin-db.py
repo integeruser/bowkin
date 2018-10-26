@@ -19,6 +19,8 @@ import utils
 
 
 def add(package_filepath, dest_dirpath=bowkin.libcs_dirpath):
+    print(utils.make_bright("[add]"))
+
     package_filename = os.path.basename(package_filepath)
 
     # e.g. libc6_2.23-0ubuntu10_amd64.deb or libc6_2.24-11+deb9u3_amd64.deb
@@ -172,6 +174,8 @@ def extract_libc_symbols_filepath(tmp_dirpath):
 
 
 def bootstrap(ubuntu_only):
+    print(utils.make_bright("[bootstrap]"))
+
     if not utils.query_yes_no(
         "This operation will download a bunch of libcs into"
         f" {colorama.Style.BRIGHT}{bowkin.libcs_dirpath}{colorama.Style.RESET_ALL}. Proceed?"
@@ -265,6 +269,8 @@ def extract_package_urls_arch(url, arch):
 
 
 def rebuild():
+    print(utils.make_bright("[rebuild]"))
+
     with sqlite3.connect(bowkin.libcs_db_filepath) as conn:
         conn.execute("DROP TABLE IF EXISTS libcs")
         conn.execute(
