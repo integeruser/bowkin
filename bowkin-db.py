@@ -148,7 +148,13 @@ def bootstrap(ubuntu_only):
     ):
         utils.abort("Aborted by user.")
 
-    # Ubuntu
+    add_ubuntu_libcs()
+    if not ubuntu_only:
+        add_debian_libcs()
+        add_arch_linux_libcs()
+
+
+def add_ubuntu_libcs():
     distro_dirpath = os.path.join(utils.get_libcs_dirpath(), "ubuntu")
     os.makedirs(distro_dirpath, exist_ok=True)
     for release in ("trusty", "xenial", "artful", "bionic"):
@@ -164,10 +170,9 @@ def bootstrap(ubuntu_only):
                 with tempfile.TemporaryDirectory() as tmp_dirpath:
                     package_filepath = utils.download(tmp_dirpath, package_url)
                     add(package_filepath, dest_dirpath=release_dirpath)
-    if ubuntu_only:
-        return
 
-    # Debian
+
+def add_debian_libcs():
     distro_dirpath = os.path.join(utils.get_libcs_dirpath(), "debian")
     os.makedirs(distro_dirpath, exist_ok=True)
     for release in ("squeeze", "wheezy", "jessie", "stretch"):
@@ -184,7 +189,8 @@ def bootstrap(ubuntu_only):
                     package_filepath = utils.download(tmp_dirpath, package_url)
                     add(package_filepath, dest_dirpath=release_dirpath)
 
-    # Arch Linux
+
+def add_arch_linux_libcs():
     distro_dirpath = os.path.join(utils.get_libcs_dirpath(), "arch")
     os.makedirs(distro_dirpath, exist_ok=True)
     for architecture in ("i686", "x86_64"):
