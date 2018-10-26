@@ -174,7 +174,7 @@ Child exited with status 0
 ```
 
 ## Usage (cont.)
-You can add any `glibc-*` packages to the database with `bowkin-db add <package>`:
+You can add any `glibc` packages to the database with `bowkin-db add <package>`:
 ```bash
 $ file ./usr/lib/libc-2.22.so
 ./usr/lib/libc-2.22.so: ELF 32-bit LSB pie executable Intel 80386, version 1 (GNU/Linux), dynamically linked, interpreter /usr/lib/ld-linux.so.2, BuildID[sha1]=faef9af5a88432766d76d7da2cf961c75b6e0e0b, for GNU/Linux 2.6.32, not stripped
@@ -183,8 +183,11 @@ The supplied libc is not in the database.
 ```
 ```bash
 $ bowkin-db add ./glibc-2.22-4-i686.pkg.tar.xz
-Saved: .../ld-i686-2.22-4.so
-Saved: .../libc-i686-2.22-4.so
+[add]
+Added: .../ld-i686-2.22-4.so
+Added: .../libc-i686-2.22-4.so
+[rebuild]
+. . .
 $ bowkin identify ./usr/lib/libc-2.22.so
 {
     "architecture": "i686",
@@ -195,4 +198,17 @@ $ bowkin identify ./usr/lib/libc-2.22.so
     "relpath": "libc-i686-2.22-4.so",
     "version": "2.22-4"
 }
+```
+```bash
+$ bowkin-db add ./libc6_2.23-0ubuntu10_amd64.deb
+[add]
+Added: .../ld-amd64-2.23-0ubuntu10.so
+Added: .../libc-amd64-2.23-0ubuntu10.so
+[rebuild]
+. . .
+$ bowkin-db add ./libc6-dbg_2.23-0ubuntu10_amd64.deb
+[add]
+Added: .../libc-amd64-2.23-0ubuntu10.so.debug
+[rebuild]
+. . .
 ```
