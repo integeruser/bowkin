@@ -62,9 +62,9 @@ $ bowkin identify /example/libc.so.6
     "version": "2.23-0ubuntu10"
 }
 ```
-2. Then, patch the binary to use it:
+2. Then, patch the binary to use the identified library:
 ```bash
-$ bowkin patch /example/challenge /example/libc.so.6
+$ bowkin patch /example/challenge /Users/integeruser/Google\ Drive/libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so
 Copy:
 - /Users/integeruser/Google Drive/libcs/ubuntu/xenial/ld-amd64-2.23-0ubuntu10.so
 - /Users/integeruser/Google Drive/libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so
