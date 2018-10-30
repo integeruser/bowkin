@@ -119,16 +119,20 @@ def patch(binary_filepath, supplied_libc_filepath):
     # if debug symbols exist, copy them also
     libc_dbg_filepath = f"{libc_filepath}.debug"
     if os.path.isfile(libc_dbg_filepath):
+        libs_debug_dirpath = os.path.join(libs_dirpath, ".debug")
+
         libc_dbg_proper_filename = utils.get_libc_dbg_proper_filename(libc_filepath)
-        libc_dbg_proper_filepath = os.path.join(libs_dirpath, libc_dbg_proper_filename)
+        libc_dbg_proper_filepath = os.path.join(
+            libs_debug_dirpath, libc_dbg_proper_filename
+        )
         if utils.query_yes_no(
             "Copy:\n"
-            f"- {utils.make_bright(libc_dbg_filepath)}"
+            f"- {utils.make_bright(libc_dbg_filepath)}\n"
             "to:\n"
-            f"- {utils.make_bright(libc_dbg_proper_filepath)}"
-            " (this particular name is required by GDB to add debug symbols automatically)\n"
+            f"- {utils.make_bright(libc_dbg_proper_filepath)}\n"
             "?"
         ):
+            os.makedirs(libs_debug_dirpath, exist_ok=True)
             shutil.copy2(libc_dbg_filepath, libc_dbg_proper_filepath)
         print()
 
