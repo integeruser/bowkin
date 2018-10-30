@@ -101,18 +101,23 @@ def patch(binary_filepath, supplied_libc_filepath):
 
     # copy the dynamic loader and the libc to the directory where the binary is located
     libs_dirpath = os.path.join(binary_dirpath, "libs")
+    ld_proper_filename = f"ld-{libc_version}.so"
+    ld_proper_filepath = os.path.join(libs_dirpath, ld_proper_filename)
+    libc_proper_filename = f"libc-{libc_version}.so"
+    libc_proper_filepath = os.path.join(libs_dirpath, libc_proper_filename)
     if not utils.query_yes_no(
         "Copy:\n"
         f"- {utils.make_bright(ld_filepath)}\n"
         f"- {utils.make_bright(libc_filepath)}\n"
         "to:\n"
-        f"- {utils.make_bright(libs_dirpath)}/\n"
+        f"- {utils.make_bright(ld_proper_filepath)}\n"
+        f"- {utils.make_bright(libc_proper_filepath)}\n"
         "?"
     ):
         utils.abort("Aborted by user.")
     os.makedirs(libs_dirpath, exist_ok=True)
-    shutil.copy2(ld_filepath, libs_dirpath)
-    shutil.copy2(libc_filepath, libs_dirpath)
+    shutil.copy2(ld_filepath, ld_proper_filepath)
+    shutil.copy2(libc_filepath, libc_proper_filepath)
 
     print()
 
@@ -148,8 +153,8 @@ def patch(binary_filepath, supplied_libc_filepath):
         utils.abort("Aborted by user.")
     shutil.copy2(binary_filepath, patched_binary_filepath)
 
-    ld_basename = os.path.basename(ld_filepath)
-    libc_basename = os.path.basename(libc_filepath)
+    ld_basename = os.path.basename(ld_proper_filename)
+    libc_basename = os.path.basename(libc_proper_filename)
     subprocess.run(
         (
             f"patchelf --set-interpreter ./libs/{shlex.quote(ld_basename)} {shlex.quote(patched_binary_filepath)}"
