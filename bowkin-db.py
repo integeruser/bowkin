@@ -250,25 +250,26 @@ def rebuild():
         conn.execute("DROP TABLE IF EXISTS libcs")
         conn.execute(
             "CREATE TABLE libcs"
-            "(relpath text, architecture text, distro text, release text, version text, buildID text)"
+            "(relpath text, architecture text, distro text, release text, version text, patch text, buildID text)"
         )
 
         for filepath in glob.glob(f"{utils.get_libcs_dirpath()}/**", recursive=True):
             match = re.match(
-                r"(?:.*?)libcs/(?:(?P<distro>.+?)/)?(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>.+?).so$",
+                r"(?:.*?)libcs/(?:(?P<distro>.+?)/)?(?:(?P<release>.+?)/)?libc-(?P<architecture>i386|i686|amd64|x86_64|armel|armhf|arm64)-(?P<version>\d.\d+)(?:-(?P<patch>.+?))?\.so$",
                 filepath,
             )
             if match:
                 relpath = os.path.relpath(filepath, utils.get_libcs_dirpath())
                 print(f"Processing: {utils.make_bright(f'.../{relpath}')}")
                 conn.execute(
-                    "INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (
                         relpath,
                         match.group("architecture"),
                         match.group("distro"),
                         match.group("release"),
                         match.group("version"),
+                        match.group("patch"),
                         utils.extract_buildID_from_file(filepath),
                     ),
                 )
