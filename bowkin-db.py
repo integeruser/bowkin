@@ -114,6 +114,9 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
                 "Aborting: the package seems to not contain a dynamic loader, libc or debug symbols."
             )
 
+        # keep the package, it may be useful later
+        shutil.copy2(package_filepath, dest_dirpath)
+
     print(utils.make_bright("</add>"))
 
 
