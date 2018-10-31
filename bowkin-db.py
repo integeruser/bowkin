@@ -48,7 +48,7 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
 
         # extract the package
         subprocess.run(
-            f"ar xf {shlex.quote(package_filename)}",
+            f"ar x {shlex.quote(package_filename)}",
             cwd=tmp_dirpath,
             check=True,
             shell=True,
