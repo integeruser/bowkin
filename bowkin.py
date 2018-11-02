@@ -86,6 +86,8 @@ def patch(binary_filepath, supplied_libc_filepath):
     libc = matches[0]
 
     libc_filepath = os.path.join(utils.get_libcs_dirpath(), libc["relpath"])
+    libc_architecture = libc["architecture"]
+    libc_patch = libc["patch"]
     libc_version = libc["version"]
 
     ld_filepath = os.path.join(
@@ -100,7 +102,7 @@ def patch(binary_filepath, supplied_libc_filepath):
         )
 
     # copy the dynamic loader and the libc to the directory where the binary is located
-    libs_dirpath = os.path.join(binary_dirpath, "libs")
+    libs_dirpath = os.path.join(binary_dirpath, "libs", libc_architecture, libc_patch)
     ld_proper_filename = f"ld-{libc_version}.so"
     ld_proper_filepath = os.path.join(libs_dirpath, ld_proper_filename)
     libc_proper_filename = f"libc-{libc_version}.so"
@@ -157,8 +159,8 @@ def patch(binary_filepath, supplied_libc_filepath):
     libc_basename = os.path.basename(libc_proper_filename)
     subprocess.run(
         (
-            f"patchelf --set-interpreter ./libs/{shlex.quote(ld_basename)} {shlex.quote(patched_binary_filepath)}"
-            f" && patchelf --add-needed ./libs/{shlex.quote(libc_basename)} {shlex.quote(patched_binary_filepath)}"
+            f"patchelf --set-interpreter {shlex.quote(os.path.relpath(ld_proper_filepath, binary_dirpath))} {shlex.quote(patched_binary_filepath)}"
+            f" && patchelf --add-needed {shlex.quote(os.path.relpath(libc_proper_filepath, binary_dirpath))} {shlex.quote(patched_binary_filepath)}"
         ),
         check=True,
         shell=True,
