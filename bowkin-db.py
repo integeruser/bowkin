@@ -43,79 +43,62 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
     libc_architecture = match.group("architecture")
     libc_version = match.group("version")
 
-    with tempfile.TemporaryDirectory() as tmp_dirpath:
-        shutil.copy2(package_filepath, tmp_dirpath)
+    tmp_dirpath = extract(package_filepath)
 
-        # extract the package
-        subprocess.run(
-            f"ar x {shlex.quote(package_filename)}",
-            cwd=tmp_dirpath,
-            check=True,
-            shell=True,
+    # find and add ld
+    ld_search_paths = [
+        os.path.join(tmp_dirpath, subpath)
+        for subpath in (
+            "lib/aarch64-linux-gnu/ld-*.so",
+            "lib/arm-linux-gnueabihf/ld-*.so",
+            "lib/arm-linux-gnueabi/ld-*.so",
+            "lib/i386-linux-gnu/ld-*.so",
+            "lib/x86_64-linux-gnu/ld-*.so",
+            "usr/lib/ld-*.so",
+        )
+    ]
+    new_ld_filename = f"ld-{libc_architecture}-{libc_version}.so"
+    new_ld_filepath = find_matching_file_and_add_to_db(
+        ld_search_paths, dest_dirpath, new_ld_filename
+    )
+
+    # find and add libc
+    libc_search_paths = [
+        os.path.join(tmp_dirpath, subpath)
+        for subpath in (
+            "lib/aarch64-linux-gnu/libc-*.so",
+            "lib/arm-linux-gnueabihf/libc-*.so",
+            "lib/arm-linux-gnueabi/libc-*.so",
+            "lib/i386-linux-gnu/libc-*.so",
+            "lib/x86_64-linux-gnu/libc-*.so",
+            "usr/lib/libc-*.so",
+        )
+    ]
+    new_libc_filename = f"libc-{libc_architecture}-{libc_version}.so"
+    new_libc_filepath = find_matching_file_and_add_to_db(
+        libc_search_paths, dest_dirpath, new_libc_filename
+    )
+
+    # find and add libc symbols
+    libc_symbols_search_paths = [
+        os.path.join(tmp_dirpath, subpath)
+        for subpath in (
+            "usr/lib/debug/lib/i386-linux-gnu/libc-*.so",
+            "usr/lib/debug/lib/x86_64-linux-gnu/libc-*.so",
+        )
+    ]
+    new_libc_symbols_filename = f"libc-{libc_architecture}-{libc_version}.so.debug"
+    new_libc_symbols_filepath = find_matching_file_and_add_to_db(
+        libc_symbols_search_paths, dest_dirpath, new_libc_symbols_filename
+    )
+
+    if not any((new_ld_filepath, new_libc_filepath, new_libc_symbols_filepath)):
+        utils.abort(
+            "Aborting: the package seems to not contain a dynamic loader, libc or debug symbols."
         )
 
-        # extract data.tar.?z if it exists
-        subprocess.run(
-            f"if [ -f data.tar.?z ]; then tar xf data.tar.?z; fi",
-            cwd=tmp_dirpath,
-            check=True,
-            shell=True,
-        )
-
-        # find and add ld
-        ld_search_paths = [
-            os.path.join(tmp_dirpath, subpath)
-            for subpath in (
-                "lib/aarch64-linux-gnu/ld-*.so",
-                "lib/arm-linux-gnueabihf/ld-*.so",
-                "lib/arm-linux-gnueabi/ld-*.so",
-                "lib/i386-linux-gnu/ld-*.so",
-                "lib/x86_64-linux-gnu/ld-*.so",
-                "usr/lib/ld-*.so",
-            )
-        ]
-        new_ld_filename = f"ld-{libc_architecture}-{libc_version}.so"
-        new_ld_filepath = find_matching_file_and_add_to_db(
-            ld_search_paths, dest_dirpath, new_ld_filename
-        )
-
-        # find and add libc
-        libc_search_paths = [
-            os.path.join(tmp_dirpath, subpath)
-            for subpath in (
-                "lib/aarch64-linux-gnu/libc-*.so",
-                "lib/arm-linux-gnueabihf/libc-*.so",
-                "lib/arm-linux-gnueabi/libc-*.so",
-                "lib/i386-linux-gnu/libc-*.so",
-                "lib/x86_64-linux-gnu/libc-*.so",
-                "usr/lib/libc-*.so",
-            )
-        ]
-        new_libc_filename = f"libc-{libc_architecture}-{libc_version}.so"
-        new_libc_filepath = find_matching_file_and_add_to_db(
-            libc_search_paths, dest_dirpath, new_libc_filename
-        )
-
-        # find and add libc symbols
-        libc_symbols_search_paths = [
-            os.path.join(tmp_dirpath, subpath)
-            for subpath in (
-                "usr/lib/debug/lib/i386-linux-gnu/libc-*.so",
-                "usr/lib/debug/lib/x86_64-linux-gnu/libc-*.so",
-            )
-        ]
-        new_libc_symbols_filename = f"libc-{libc_architecture}-{libc_version}.so.debug"
-        new_libc_symbols_filepath = find_matching_file_and_add_to_db(
-            libc_symbols_search_paths, dest_dirpath, new_libc_symbols_filename
-        )
-
-        if not any((new_ld_filepath, new_libc_filepath, new_libc_symbols_filepath)):
-            utils.abort(
-                "Aborting: the package seems to not contain a dynamic loader, libc or debug symbols."
-            )
-
-        # keep the package, it may be useful later
-        shutil.copy2(package_filepath, dest_dirpath)
+    # keep the package, it may be useful later
+    shutil.copy2(package_filepath, dest_dirpath)
 
     print(utils.make_bright("</add>"))
 
@@ -246,6 +229,33 @@ def extract_package_urls_arch(url, architecture):
 # ############################################################################ #
 
 
+def extract(package_filepath):
+    print(utils.make_bright("<extract>"))
+
+    package_filename = os.path.basename(package_filepath)
+
+    tmp_dirpath = tempfile.mkdtemp()
+    shutil.copy2(package_filepath, tmp_dirpath)
+    # extract the package
+    subprocess.run(
+        f"ar x {shlex.quote(package_filename)}", cwd=tmp_dirpath, check=True, shell=True
+    )
+    # extract data.tar.?z if it exists
+    subprocess.run(
+        f"if [ -f data.tar.?z ]; then tar xf data.tar.?z; fi",
+        cwd=tmp_dirpath,
+        check=True,
+        shell=True,
+    )
+    print(f"Extracted: {utils.make_bright(tmp_dirpath)}")
+
+    print(utils.make_bright("</extract>"))
+    return tmp_dirpath
+
+
+# ############################################################################ #
+
+
 def rebuild():
     print(utils.make_bright("<rebuild>"))
 
@@ -298,6 +308,11 @@ if __name__ == "__main__":
     )
     bootstrap_parser.add_argument("--ubuntu-only", action="store_true")
 
+    extract_parser = subparsers.add_parser(
+        "extract", help="Extract a package into a temporary directory"
+    )
+    extract_parser.add_argument("package", type=argparse.FileType())
+
     rebuild_parser = subparsers.add_parser(
         "rebuild", help="will rebuild the database using the added libcs"
     )
@@ -310,6 +325,8 @@ if __name__ == "__main__":
     elif args.action == "bootstrap":
         bootstrap(args.ubuntu_only)
         rebuild()
+    elif args.action == "extract":
+        extract(args.package.name)
     elif args.action == "rebuild":
         rebuild()
     else:
