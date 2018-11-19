@@ -102,7 +102,9 @@ def patch(binary_filepath, supplied_libc_filepath):
         )
 
     # copy the dynamic loader and the libc to the directory where the binary is located
-    libs_dirpath = os.path.join(binary_dirpath, "libs", libc_architecture, libc_patch)
+    libs_dirpath = os.path.join(
+        binary_dirpath, "libs", libc_architecture, libc_version, libc_patch
+    )
     ld_proper_filename = f"ld-{libc_version}.so"
     ld_proper_filepath = os.path.join(libs_dirpath, ld_proper_filename)
     libc_proper_filename = f"libc-{libc_version}.so"
@@ -144,7 +146,9 @@ def patch(binary_filepath, supplied_libc_filepath):
         print()
 
     # patch the binary to use the new dynamic loader and libc
-    patched_binary_filepath = f"{binary_filepath}-{libc_version}"
+    patched_binary_filepath = (
+        f"{binary_filepath}-{libc_architecture}-{libc_version}-{libc_patch}"
+    )
     if not utils.query_yes_no(
         "Copy:\n"
         f"- {utils.make_bright(binary_filepath)}\n"
