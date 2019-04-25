@@ -207,9 +207,12 @@ def extract_package_url_ubuntu_debian(url):
                 .decode("ascii")
             )
             return package_url
-        except AttributeError:
-            print(utils.make_warning(f"Problems on: {url}"))
-            return None
+    except AttributeError:
+        print(utils.make_warning(f"Problems on: {url}"))
+        return None
+    except urllib.error.HTTPError:
+        print(utils.make_warning(f"HTTP Error on: {url}"))
+        return None
 
 
 def extract_package_urls_arch(url, architecture):
