@@ -36,9 +36,12 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
     try:
         match = next(match for match in matches if match is not None)
     except StopIteration:
-        utils.abort(
-            f"Aborting: the filename of the package did not match any supported patterns."
+        print(
+            utils.make_warning(
+                f"Skipping: the filename of the package did not match any supported patterns."
         )
+        )
+        return
 
     libc_architecture = match.group("architecture")
     libc_version = match.group("version")
