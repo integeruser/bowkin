@@ -238,7 +238,11 @@ def extract(package_filepath):
     shutil.copy2(package_filepath, tmp_dirpath)
     # extract the package
     subprocess.run(
-        f"ar x {shlex.quote(package_filename)}", cwd=tmp_dirpath, check=True, shell=True
+        f"ar x {shlex.quote(package_filename)}",
+        cwd=tmp_dirpath,
+        check=True,
+        shell=True,
+        stderr=subprocess.PIPE,
     )
     # extract data.tar.?z if it exists
     subprocess.run(
