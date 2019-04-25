@@ -93,9 +93,12 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
     )
 
     if not any((new_ld_filepath, new_libc_filepath, new_libc_symbols_filepath)):
-        utils.abort(
-            "Aborting: the package seems to not contain a dynamic loader, libc or debug symbols."
+        print(
+            utils.make_warning(
+                f"Skipping: the package seems to not contain a dynamic loader, libc or debug symbols."
+            )
         )
+        return
 
     # keep the package, it may be useful later
     shutil.copy2(package_filepath, dest_dirpath)
