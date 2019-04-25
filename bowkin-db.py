@@ -150,7 +150,7 @@ def bootstrap(ubuntu_only):
 def add_ubuntu_libcs():
     distro_dirpath = os.path.join(utils.get_libcs_dirpath(), "ubuntu")
     os.makedirs(distro_dirpath, exist_ok=True)
-    for release in ("trusty", "xenial", "artful", "bionic"):
+    for release in ("trusty", "xenial", "artful", "bionic", "buster"):
         release_dirpath = os.path.join(distro_dirpath, release)
         os.makedirs(release_dirpath, exist_ok=True)
         for architecture in ("i386", "amd64"):
