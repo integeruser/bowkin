@@ -344,7 +344,10 @@ if __name__ == "__main__":
         add(args.package.name)
         rebuild()
     elif args.action == "bootstrap":
+        try:
         bootstrap(args.ubuntu_only)
+        except KeyboardInterrupt:
+            pass
         rebuild()
     elif args.action == "extract":
         extract(args.package.name)
