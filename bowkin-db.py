@@ -28,7 +28,7 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
     matches = [
         re.match(pattern, package_filename)
         for pattern in (
-            "libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb).*?)_(?P<architecture>i386|amd64|armel|armhf|arm64).deb",
+            "libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb)?.*?)_(?P<architecture>i386|amd64|armel|armhf|arm64).deb",
             "glibc-(?P<version>\d.\d+-\d+)-(?P<architecture>i686|x86_64).pkg.tar.xz",
         )
     ]
