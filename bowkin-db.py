@@ -199,8 +199,8 @@ def add_arch_linux_libcs():
 
 
 def extract_package_url_ubuntu_debian(url):
+    try:
     with urllib.request.urlopen(url) as u:
-        try:
             package_url = (
                 re.search(br"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", u.read())
                 .group("url")
