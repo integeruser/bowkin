@@ -162,6 +162,38 @@ def bootstrap(ubuntu_only):
 
 
 def add_ubuntu_libcs():
+    def extract_package_versions(url, package):
+        with urllib.request.urlopen(url) as u:
+            try:
+                package_versions = set(
+                    re.findall(
+                        fr'"/ubuntu/.+?/{package}/(.+?)(?:\.\d+)?"',
+                        u.read().decode("ascii"),
+                    )
+                )
+                return package_versions
+            except AttributeError:
+                print(utils.make_warning(f"Problems on: {url}"))
+                asd
+                return []
+
+    def extract_package_url(url):
+        try:
+            with urllib.request.urlopen(url) as u:
+                package_url = (
+                    re.search(br"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", u.read())
+                    .group("url")
+                    .decode("ascii")
+                )
+                return package_url
+        except AttributeError:
+            print(utils.make_warning(f"Problems on: {url}"))
+            qwe
+            return None
+        except urllib.error.HTTPError:
+            print(utils.make_warning(f"HTTP Error on: {url}"))
+            return None
+
     distro_dirpath = os.path.join(utils.get_libcs_dirpath(), "ubuntu")
     os.makedirs(distro_dirpath, exist_ok=True)
     for release in ("trusty", "xenial", "artful", "bionic"):
@@ -170,13 +202,19 @@ def add_ubuntu_libcs():
         for architecture in ("i386", "amd64"):
             for package in ("libc6", "libc6-dbg"):
                 print()
-                url = f"https://packages.ubuntu.com/{release}/{architecture}/{package}/download"
-                package_url = extract_package_url_ubuntu_debian(url)
-                if not package_url:
-                    continue
-                with tempfile.TemporaryDirectory() as tmp_dirpath:
-                    package_filepath = utils.download(tmp_dirpath, package_url)
-                    add(package_filepath, dest_dirpath=release_dirpath)
+                url = f"https://launchpad.net/ubuntu/{release}/{architecture}/{package}"
+                package_versions = extract_package_versions(url, package)
+                most_recent_package_versions = sorted(package_versions, reverse=True)[
+                    :3
+                ]
+                for package_version in most_recent_package_versions:
+                    print()
+                    package_url = extract_package_url(f"{url}/{package_version}")
+                    if not package_url:
+                        continue
+                    with tempfile.TemporaryDirectory() as tmp_dirpath:
+                        package_filepath = utils.download(tmp_dirpath, package_url)
+                        add(package_filepath, dest_dirpath=release_dirpath)
 
 
 def add_debian_libcs():
@@ -189,7 +227,7 @@ def add_debian_libcs():
             for package in ("libc6", "libc6-dbg"):
                 print()
                 url = f"https://packages.debian.org/{release}/{architecture}/{package}/download"
-                package_url = extract_package_url_ubuntu_debian(url)
+                package_url = extract_package_url_debian(url)
                 if not package_url:
                     continue
                 with tempfile.TemporaryDirectory() as tmp_dirpath:
@@ -209,7 +247,7 @@ def add_arch_linux_libcs():
                 add(package_filepath, dest_dirpath=distro_dirpath)
 
 
-def extract_package_url_ubuntu_debian(url):
+def extract_package_url_debian(url):
     try:
         with urllib.request.urlopen(url) as u:
             package_url = (
@@ -345,7 +383,7 @@ if __name__ == "__main__":
         rebuild()
     elif args.action == "bootstrap":
         try:
-        bootstrap(args.ubuntu_only)
+            bootstrap(args.ubuntu_only)
         except KeyboardInterrupt:
             pass
         rebuild()
