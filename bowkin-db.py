@@ -39,15 +39,23 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
         print(
             utils.make_warning(
                 f"Skipping: the filename of the package did not match any supported patterns."
-        )
+            )
         )
         return
 
     libc_architecture = match.group("architecture")
     libc_version = match.group("version")
 
-    tmp_dirpath = extract(package_filepath)
-
+    try:
+        tmp_dirpath = extract(package_filepath)
+    except subprocess.CalledProcessError:
+        print(
+            utils.make_warning(
+                f"Problems during the parsing of the package named: {package_filename}"
+            )
+        )
+        print(utils.make_warning(f"Probably format not supported (yet)"))
+        return
     # find and add ld
     ld_search_paths = [
         os.path.join(tmp_dirpath, subpath)
@@ -203,7 +211,7 @@ def add_arch_linux_libcs():
 
 def extract_package_url_ubuntu_debian(url):
     try:
-    with urllib.request.urlopen(url) as u:
+        with urllib.request.urlopen(url) as u:
             package_url = (
                 re.search(br"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", u.read())
                 .group("url")
