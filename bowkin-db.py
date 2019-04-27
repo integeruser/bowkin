@@ -174,7 +174,6 @@ def add_ubuntu_libcs():
                 return package_versions
             except AttributeError:
                 print(utils.make_warning(f"Problems on: {url}"))
-                asd
                 return []
 
     def extract_package_url(url):
@@ -188,7 +187,6 @@ def add_ubuntu_libcs():
                 return package_url
         except AttributeError:
             print(utils.make_warning(f"Problems on: {url}"))
-            qwe
             return None
         except urllib.error.HTTPError:
             print(utils.make_warning(f"HTTP Error on: {url}"))
@@ -218,6 +216,22 @@ def add_ubuntu_libcs():
 
 
 def add_debian_libcs():
+    def extract_package_url(url):
+        try:
+            with urllib.request.urlopen(url) as u:
+                package_url = (
+                    re.search(br"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", u.read())
+                    .group("url")
+                    .decode("ascii")
+                )
+                return package_url
+        except AttributeError:
+            print(utils.make_warning(f"Problems on: {url}"))
+            return None
+        except urllib.error.HTTPError:
+            print(utils.make_warning(f"HTTP Error on: {url}"))
+            return None
+
     distro_dirpath = os.path.join(utils.get_libcs_dirpath(), "debian")
     os.makedirs(distro_dirpath, exist_ok=True)
     for release in ("squeeze", "wheezy", "jessie", "stretch", "buster"):
@@ -227,7 +241,7 @@ def add_debian_libcs():
             for package in ("libc6", "libc6-dbg"):
                 print()
                 url = f"https://packages.debian.org/{release}/{architecture}/{package}/download"
-                package_url = extract_package_url_debian(url)
+                package_url = extract_package_url(url)
                 if not package_url:
                     continue
                 with tempfile.TemporaryDirectory() as tmp_dirpath:
@@ -236,49 +250,31 @@ def add_debian_libcs():
 
 
 def add_arch_linux_libcs():
+    def extract_package_urls(url, architecture):
+        with urllib.request.urlopen(url) as u:
+            try:
+                package_filenames = re.findall(
+                    fr"['\"](?P<package_filename>glibc-(?:.*?)-{architecture}\.pkg\.tar\.[gx]z)['\"]",
+                    u.read().decode("ascii"),
+                )
+                package_urls = [
+                    os.path.join(url, package_filename)
+                    for package_filename in package_filenames
+                ]
+                return package_urls
+            except AttributeError:
+                print(utils.make_warning(f"Problems on: {url}"))
+                return []
+
     distro_dirpath = os.path.join(utils.get_libcs_dirpath(), "arch")
     os.makedirs(distro_dirpath, exist_ok=True)
     for architecture in ("i686", "x86_64"):
         url = "https://archive.archlinux.org/packages/g/glibc/"
-        for package_url in extract_package_urls_arch(url, architecture):
+        for package_url in extract_package_urls(url, architecture):
             print()
             with tempfile.TemporaryDirectory() as tmp_dirpath:
                 package_filepath = utils.download(tmp_dirpath, package_url)
                 add(package_filepath, dest_dirpath=distro_dirpath)
-
-
-def extract_package_url_debian(url):
-    try:
-        with urllib.request.urlopen(url) as u:
-            package_url = (
-                re.search(br"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", u.read())
-                .group("url")
-                .decode("ascii")
-            )
-            return package_url
-    except AttributeError:
-        print(utils.make_warning(f"Problems on: {url}"))
-        return None
-    except urllib.error.HTTPError:
-        print(utils.make_warning(f"HTTP Error on: {url}"))
-        return None
-
-
-def extract_package_urls_arch(url, architecture):
-    with urllib.request.urlopen(url) as u:
-        try:
-            package_filenames = re.findall(
-                fr"['\"](?P<package_filename>glibc-(?:.*?)-{architecture}\.pkg\.tar\.[gx]z)['\"]",
-                u.read().decode("ascii"),
-            )
-            package_urls = [
-                os.path.join(url, package_filename)
-                for package_filename in package_filenames
-            ]
-            return package_urls
-        except AttributeError:
-            print(utils.make_warning(f"Problems on: {url}"))
-            return []
 
 
 # ############################################################################ #
