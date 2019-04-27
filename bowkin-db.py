@@ -20,22 +20,8 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
     print(utils.make_bright("<add>"))
 
     package_filename = os.path.basename(package_filepath)
-
-    # examples of supported packages:
-    # - libc6_2.23-0ubuntu10_amd64.deb
-    # - libc6_2.24-11+deb9u3_amd64.deb
-    # - glibc-2.23-3-x86_64.pkg.tar.xz
-    matches = [
-        re.match(pattern, package_filename)
-        for pattern in (
-            "libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb)?.*?)_(?P<architecture>i386|amd64|armel|armhf|arm64).deb",
-            "glibc-(?P<version>\d.\d+-\d+)-(?P<architecture>i686|x86_64).pkg.tar.xz",
-        )
-    ]
-
-    try:
-        match = next(match for match in matches if match is not None)
-    except StopIteration:
+    match = _identify(package_filename)
+    if not match:
         print(
             utils.make_warning(
                 f"Skipping: the filename of the package did not match any supported patterns."
@@ -69,7 +55,7 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
         )
     ]
     new_ld_filename = f"ld-{libc_architecture}-{libc_version}.so"
-    new_ld_filepath = find_matching_file_and_add_to_db(
+    new_ld_filepath = _find_matching_file_and_add_to_db(
         ld_search_paths, dest_dirpath, new_ld_filename
     )
 
@@ -86,7 +72,7 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
         )
     ]
     new_libc_filename = f"libc-{libc_architecture}-{libc_version}.so"
-    new_libc_filepath = find_matching_file_and_add_to_db(
+    new_libc_filepath = _find_matching_file_and_add_to_db(
         libc_search_paths, dest_dirpath, new_libc_filename
     )
 
@@ -99,7 +85,7 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
         )
     ]
     new_libc_symbols_filename = f"libc-{libc_architecture}-{libc_version}.so.debug"
-    new_libc_symbols_filepath = find_matching_file_and_add_to_db(
+    new_libc_symbols_filepath = _find_matching_file_and_add_to_db(
         libc_symbols_search_paths, dest_dirpath, new_libc_symbols_filename
     )
 
@@ -117,8 +103,28 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
     print(utils.make_bright("</add>"))
 
 
-def find_matching_file_and_add_to_db(search_paths, dest_dirpath, new_filename):
-    filepath = find_matching_file(search_paths)
+def _identify(filename):
+    # examples of supported packages:
+    # - libc6_2.23-0ubuntu10_amd64.deb
+    # - libc6_2.24-11+deb9u3_amd64.deb
+    # - glibc-2.23-3-x86_64.pkg.tar.xz
+    matches = [
+        re.match(pattern, filename)
+        for pattern in (
+            r"libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb)?.*?)_(?P<architecture>i386|amd64|armel|armhf|arm64).deb",
+            r"glibc-(?P<version>\d.\d+-\d+)-(?P<architecture>i686|x86_64).pkg.tar.xz",
+        )
+    ]
+    try:
+        match = next(match for match in matches if match is not None)
+    except StopIteration:
+        return None
+    else:
+        return match
+
+
+def _find_matching_file_and_add_to_db(search_paths, dest_dirpath, new_filename):
+    filepath = _find_matching_file(search_paths)
     if not filepath:
         return None
 
@@ -131,7 +137,7 @@ def find_matching_file_and_add_to_db(search_paths, dest_dirpath, new_filename):
     return new_filepath
 
 
-def find_matching_file(paths):
+def _find_matching_file(paths):
     for path in paths:
         filepaths = glob.glob(path)
         if filepaths:
@@ -153,16 +159,16 @@ def bootstrap(ubuntu_only):
     ):
         utils.abort("Aborted by user.")
 
-    add_ubuntu_libcs()
+    _add_ubuntu_libcs()
     if not ubuntu_only:
-        add_debian_libcs()
-        add_arch_linux_libcs()
+        _add_debian_libcs()
+        _add_arch_linux_libcs()
 
     print(utils.make_bright("</bootstrap>"))
 
 
-def add_ubuntu_libcs():
-    def extract_package_versions(url, package):
+def _add_ubuntu_libcs():
+    def _extract_package_versions(url, package):
         page = utils.retrieve(url).decode("latin-1")
         try:
             package_versions = set(
@@ -173,7 +179,7 @@ def add_ubuntu_libcs():
             print(utils.make_warning(f"Problems on: {url}"))
             return []
 
-    def extract_package_url(url):
+    def _extract_package_url(url):
         page = utils.retrieve(url).decode("latin-1")
         try:
             package_url = re.search(
@@ -196,13 +202,13 @@ def add_ubuntu_libcs():
             for package in ("libc6", "libc6-dbg"):
                 print()
                 url = f"https://launchpad.net/ubuntu/{release}/{architecture}/{package}"
-                package_versions = extract_package_versions(url, package)
+                package_versions = _extract_package_versions(url, package)
                 most_recent_package_versions = sorted(package_versions, reverse=True)[
                     :3
                 ]
                 for package_version in most_recent_package_versions:
                     print()
-                    package_url = extract_package_url(f"{url}/{package_version}")
+                    package_url = _extract_package_url(f"{url}/{package_version}")
                     if not package_url:
                         continue
                     with tempfile.TemporaryDirectory() as tmp_dirpath:
@@ -210,8 +216,8 @@ def add_ubuntu_libcs():
                         add(package_filepath, dest_dirpath=release_dirpath)
 
 
-def add_debian_libcs():
-    def extract_package_url(url):
+def _add_debian_libcs():
+    def _extract_package_url(url):
         page = utils.retrieve(url).decode("latin-1")
         try:
             package_url = re.search(
@@ -234,7 +240,7 @@ def add_debian_libcs():
             for package in ("libc6", "libc6-dbg"):
                 print()
                 url = f"https://packages.debian.org/{release}/{architecture}/{package}/download"
-                package_url = extract_package_url(url)
+                package_url = _extract_package_url(url)
                 if not package_url:
                     continue
                 with tempfile.TemporaryDirectory() as tmp_dirpath:
@@ -242,8 +248,8 @@ def add_debian_libcs():
                     add(package_filepath, dest_dirpath=release_dirpath)
 
 
-def add_arch_linux_libcs():
-    def extract_package_urls(url, architecture):
+def _add_arch_linux_libcs():
+    def _extract_package_urls(url, architecture):
         page = utils.retrieve(url).decode("latin-1")
         try:
             package_filenames = re.findall(
@@ -263,7 +269,7 @@ def add_arch_linux_libcs():
     os.makedirs(distro_dirpath, exist_ok=True)
     for architecture in ("i686", "x86_64"):
         url = "https://archive.archlinux.org/packages/g/glibc/"
-        for package_url in extract_package_urls(url, architecture):
+        for package_url in _extract_package_urls(url, architecture):
             print()
             with tempfile.TemporaryDirectory() as tmp_dirpath:
                 package_filepath = utils.retrieve(package_url, tmp_dirpath)
