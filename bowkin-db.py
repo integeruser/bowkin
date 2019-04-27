@@ -31,6 +31,7 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
 
     libc_architecture = match.group("architecture")
     libc_version = match.group("version")
+    libc_patch = match.group("patch")
 
     try:
         tmp_dirpath = extract(package_filepath)
@@ -54,7 +55,7 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
             "usr/lib/ld-*.so",
         )
     ]
-    new_ld_filename = f"ld-{libc_architecture}-{libc_version}.so"
+    new_ld_filename = f"ld-{libc_architecture}-{libc_version}-{libc_patch}.so"
     new_ld_filepath = _find_matching_file_and_add_to_db(
         ld_search_paths, dest_dirpath, new_ld_filename
     )
@@ -71,7 +72,7 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
             "usr/lib/libc-*.so",
         )
     ]
-    new_libc_filename = f"libc-{libc_architecture}-{libc_version}.so"
+    new_libc_filename = f"libc-{libc_architecture}-{libc_version}-{libc_patch}.so"
     new_libc_filepath = _find_matching_file_and_add_to_db(
         libc_search_paths, dest_dirpath, new_libc_filename
     )
@@ -84,7 +85,9 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
             "usr/lib/debug/lib/x86_64-linux-gnu/libc-*.so",
         )
     ]
-    new_libc_symbols_filename = f"libc-{libc_architecture}-{libc_version}.so.debug"
+    new_libc_symbols_filename = (
+        f"libc-{libc_architecture}-{libc_version}-{libc_patch}.so.debug"
+    )
     new_libc_symbols_filepath = _find_matching_file_and_add_to_db(
         libc_symbols_search_paths, dest_dirpath, new_libc_symbols_filename
     )
