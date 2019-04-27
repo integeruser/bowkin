@@ -147,18 +147,28 @@ def bootstrap(ubuntu_only):
     print(utils.make_bright("</bootstrap>"))
 
 
-def _add_ubuntu_libcs():
-    def _extract_package_versions(url, package):
-        page = utils.retrieve(url).decode("latin-1")
-        try:
-            package_versions = set(
-                re.findall(fr'"/ubuntu/.+?/{package}/(.+?)(?:\.\d+)?"', page)
-            )
-            return package_versions
-        except AttributeError:
-            print(utils.make_warning(f"Problems on: {url}"))
-            return []
+def _already_in_db(package_url):
+    match = utils.match(package_url)
+    if not match:
+        return False
 
+    with sqlite3.connect(utils.get_libcs_db_filepath()) as conn:
+        try:
+            return next(
+                conn.execute(
+                    "SELECT * FROM libcs where architecture=? and version=? and patch=?",
+                    (
+                        match.group("architecture"),
+                        match.group("version"),
+                        match.group("patch"),
+                    ),
+            )
+            )
+        except StopIteration:
+            return False
+
+
+def _add_ubuntu_libcs():
     def _extract_package_url(url):
         page = utils.retrieve(url).decode("latin-1")
         try:
@@ -180,18 +190,25 @@ def _add_ubuntu_libcs():
         os.makedirs(release_dirpath, exist_ok=True)
         for architecture in ("i386", "amd64"):
             for package in ("libc6", "libc6-dbg"):
-                print()
                 url = f"https://launchpad.net/ubuntu/{release}/{architecture}/{package}"
-                package_versions = _extract_package_versions(url, package)
-                most_recent_package_versions = sorted(package_versions, reverse=True)[
-                    :3
-                ]
-                for package_version in most_recent_package_versions:
-                    print()
-                    package_url = _extract_package_url(f"{url}/{package_version}")
-                    if not package_url:
+
+                content = utils.retrieve(url).decode("latin-1")
+                available_packages_filenames = set(
+                    re.findall(fr'"/ubuntu/.+?/{package}/(.+?)(?:\.\d+)?"', content)
+                )
+                most_recent_available_packages_filenames = sorted(
+                    available_packages_filenames, reverse=True
+                )[:3]
+
+                for package_filename in most_recent_available_packages_filenames:
+                    package_url = _extract_package_url(f"{url}/{package_filename}")
+                    if not package_url or _already_in_db(package_url):
+                        print(
+                            f"Skipping (already in db): {utils.make_bright(package_url)}"
+                        )
                         continue
                     with tempfile.TemporaryDirectory() as tmp_dirpath:
+                        print(f"Downloading: {utils.make_bright(package_url)}")
                         package_filepath = utils.retrieve(package_url, tmp_dirpath)
                         add(package_filepath, dest_dirpath=release_dirpath)
 
@@ -221,7 +238,8 @@ def _add_debian_libcs():
                 print()
                 url = f"https://packages.debian.org/{release}/{architecture}/{package}/download"
                 package_url = _extract_package_url(url)
-                if not package_url:
+                if not package_url or _already_in_db(package_url):
+                    print(f"Skipping (already in db): {utils.make_bright(package_url)}")
                     continue
                 with tempfile.TemporaryDirectory() as tmp_dirpath:
                     package_filepath = utils.retrieve(package_url, tmp_dirpath)
@@ -251,6 +269,9 @@ def _add_arch_linux_libcs():
         url = "https://archive.archlinux.org/packages/g/glibc/"
         for package_url in _extract_package_urls(url, architecture):
             print()
+            if _already_in_db(package_url):
+                print(f"Skipping (already in db): {utils.make_bright(package_url)}")
+                continue
             with tempfile.TemporaryDirectory() as tmp_dirpath:
                 package_filepath = utils.retrieve(package_url, tmp_dirpath)
                 add(package_filepath, dest_dirpath=distro_dirpath)

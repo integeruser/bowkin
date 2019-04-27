@@ -57,7 +57,6 @@ def retrieve(url, dirpath=None):
         with urllib.request.urlopen(url) as u:
             return u.read()
     else:
-        print(f"Downloading: {colorama.Style.BRIGHT}{url}{colorama.Style.RESET_ALL}")
         filepath, _ = urllib.request.urlretrieve(
             url, filename=os.path.join(dirpath, os.path.basename(url))
         )
