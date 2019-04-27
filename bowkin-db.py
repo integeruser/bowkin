@@ -163,28 +163,23 @@ def bootstrap(ubuntu_only):
 
 def add_ubuntu_libcs():
     def extract_package_versions(url, package):
-        with urllib.request.urlopen(url) as u:
-            try:
-                package_versions = set(
-                    re.findall(
-                        fr'"/ubuntu/.+?/{package}/(.+?)(?:\.\d+)?"',
-                        u.read().decode("ascii"),
-                    )
-                )
-                return package_versions
-            except AttributeError:
-                print(utils.make_warning(f"Problems on: {url}"))
-                return []
+        page = utils.retrieve(url).decode("latin-1")
+        try:
+            package_versions = set(
+                re.findall(fr'"/ubuntu/.+?/{package}/(.+?)(?:\.\d+)?"', page)
+            )
+            return package_versions
+        except AttributeError:
+            print(utils.make_warning(f"Problems on: {url}"))
+            return []
 
     def extract_package_url(url):
+        page = utils.retrieve(url).decode("latin-1")
         try:
-            with urllib.request.urlopen(url) as u:
-                package_url = (
-                    re.search(br"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", u.read())
-                    .group("url")
-                    .decode("ascii")
-                )
-                return package_url
+            package_url = re.search(
+                r"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", page
+            ).group("url")
+            return package_url
         except AttributeError:
             print(utils.make_warning(f"Problems on: {url}"))
             return None
@@ -211,20 +206,18 @@ def add_ubuntu_libcs():
                     if not package_url:
                         continue
                     with tempfile.TemporaryDirectory() as tmp_dirpath:
-                        package_filepath = utils.download(tmp_dirpath, package_url)
+                        package_filepath = utils.retrieve(package_url, tmp_dirpath)
                         add(package_filepath, dest_dirpath=release_dirpath)
 
 
 def add_debian_libcs():
     def extract_package_url(url):
+        page = utils.retrieve(url).decode("latin-1")
         try:
-            with urllib.request.urlopen(url) as u:
-                package_url = (
-                    re.search(br"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", u.read())
-                    .group("url")
-                    .decode("ascii")
-                )
-                return package_url
+            package_url = re.search(
+                r"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", page
+            ).group("url")
+            return package_url
         except AttributeError:
             print(utils.make_warning(f"Problems on: {url}"))
             return None
@@ -245,26 +238,26 @@ def add_debian_libcs():
                 if not package_url:
                     continue
                 with tempfile.TemporaryDirectory() as tmp_dirpath:
-                    package_filepath = utils.download(tmp_dirpath, package_url)
+                    package_filepath = utils.retrieve(package_url, tmp_dirpath)
                     add(package_filepath, dest_dirpath=release_dirpath)
 
 
 def add_arch_linux_libcs():
     def extract_package_urls(url, architecture):
-        with urllib.request.urlopen(url) as u:
-            try:
-                package_filenames = re.findall(
-                    fr"['\"](?P<package_filename>glibc-(?:.*?)-{architecture}\.pkg\.tar\.[gx]z)['\"]",
-                    u.read().decode("ascii"),
-                )
-                package_urls = [
-                    os.path.join(url, package_filename)
-                    for package_filename in package_filenames
-                ]
-                return package_urls
-            except AttributeError:
-                print(utils.make_warning(f"Problems on: {url}"))
-                return []
+        page = utils.retrieve(url).decode("latin-1")
+        try:
+            package_filenames = re.findall(
+                fr"['\"](?P<package_filename>glibc-(?:.*?)-{architecture}\.pkg\.tar\.[gx]z)['\"]",
+                page,
+            )
+            package_urls = [
+                os.path.join(url, package_filename)
+                for package_filename in package_filenames
+            ]
+            return package_urls
+        except AttributeError:
+            print(utils.make_warning(f"Problems on: {url}"))
+            return []
 
     distro_dirpath = os.path.join(utils.get_libcs_dirpath(), "arch")
     os.makedirs(distro_dirpath, exist_ok=True)
@@ -273,7 +266,7 @@ def add_arch_linux_libcs():
         for package_url in extract_package_urls(url, architecture):
             print()
             with tempfile.TemporaryDirectory() as tmp_dirpath:
-                package_filepath = utils.download(tmp_dirpath, package_url)
+                package_filepath = utils.retrieve(package_url, tmp_dirpath)
                 add(package_filepath, dest_dirpath=distro_dirpath)
 
 

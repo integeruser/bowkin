@@ -52,12 +52,16 @@ def get_libc_dbg_proper_filename(libc_filepath):
         return libc_dbg_filename
 
 
-def download(dirpath, url):
-    print(f"Downloading: {colorama.Style.BRIGHT}{url}{colorama.Style.RESET_ALL}")
-    filepath, _ = urllib.request.urlretrieve(
-        url, filename=os.path.join(dirpath, os.path.basename(url))
-    )
-    return filepath
+def retrieve(url, dirpath=None):
+    if not dirpath:
+        with urllib.request.urlopen(url) as u:
+            return u.read()
+    else:
+        print(f"Downloading: {colorama.Style.BRIGHT}{url}{colorama.Style.RESET_ALL}")
+        filepath, _ = urllib.request.urlretrieve(
+            url, filename=os.path.join(dirpath, os.path.basename(url))
+        )
+        return filepath
 
 
 # ############################################################################ #
