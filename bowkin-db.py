@@ -20,7 +20,7 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
     print(utils.make_bright("<add>"))
 
     package_filename = os.path.basename(package_filepath)
-    match = _identify(package_filename)
+    match = utils.match(package_filename)
     if not match:
         print(
             utils.make_warning(
@@ -101,26 +101,6 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
     shutil.copy2(package_filepath, dest_dirpath)
 
     print(utils.make_bright("</add>"))
-
-
-def _identify(filename):
-    # examples of supported packages:
-    # - libc6_2.23-0ubuntu10_amd64.deb
-    # - libc6_2.24-11+deb9u3_amd64.deb
-    # - glibc-2.23-3-x86_64.pkg.tar.xz
-    matches = [
-        re.match(pattern, filename)
-        for pattern in (
-            r"libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb)?.*?)_(?P<architecture>i386|amd64|armel|armhf|arm64).deb",
-            r"glibc-(?P<version>\d.\d+-\d+)-(?P<architecture>i686|x86_64).pkg.tar.xz",
-        )
-    ]
-    try:
-        match = next(match for match in matches if match is not None)
-    except StopIteration:
-        return None
-    else:
-        return match
 
 
 def _find_matching_file_and_add_to_db(search_paths, dest_dirpath, new_filename):
