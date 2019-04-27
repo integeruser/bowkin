@@ -9,7 +9,6 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
-import urllib.request
 
 import utils
 
@@ -19,32 +18,29 @@ import utils
 def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
     print(utils.make_bright("<add>"))
 
-    package_filename = os.path.basename(package_filepath)
-
-    # examples of supported packages:
-    # - libc6_2.23-0ubuntu10_amd64.deb
-    # - libc6_2.24-11+deb9u3_amd64.deb
-    # - glibc-2.23-3-x86_64.pkg.tar.xz
-    matches = [
-        re.match(pattern, package_filename)
-        for pattern in (
-            "libc6(?:-dbg)?_(?P<version>.*?(ubuntu|deb).*?)_(?P<architecture>i386|amd64|armel|armhf|arm64).deb",
-            "glibc-(?P<version>\d.\d+-\d+)-(?P<architecture>i686|x86_64).pkg.tar.xz",
+    match = utils.match(package_filepath)
+    if not match:
+        print(
+            utils.make_warning(
+                f"Skipping: the filename of the package did not match any supported patterns."
+            )
         )
-    ]
-
-    try:
-        match = next(match for match in matches if match is not None)
-    except StopIteration:
-        utils.abort(
-            f"Aborting: the filename of the package did not match any supported patterns."
-        )
+        return
 
     libc_architecture = match.group("architecture")
     libc_version = match.group("version")
+    libc_patch = match.group("patch")
 
-    tmp_dirpath = extract(package_filepath)
-
+    try:
+        tmp_dirpath = extract(package_filepath)
+    except subprocess.CalledProcessError:
+        print(
+            utils.make_warning(
+                f"Problems during the parsing of the package: {package_filepath}"
+            )
+        )
+        print(utils.make_warning(f"Probably format not supported (yet)"))
+        return
     # find and add ld
     ld_search_paths = [
         os.path.join(tmp_dirpath, subpath)
@@ -57,8 +53,8 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
             "usr/lib/ld-*.so",
         )
     ]
-    new_ld_filename = f"ld-{libc_architecture}-{libc_version}.so"
-    new_ld_filepath = find_matching_file_and_add_to_db(
+    new_ld_filename = f"ld-{libc_architecture}-{libc_version}-{libc_patch}.so"
+    new_ld_filepath = _find_matching_file_and_add_to_db(
         ld_search_paths, dest_dirpath, new_ld_filename
     )
 
@@ -74,8 +70,8 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
             "usr/lib/libc-*.so",
         )
     ]
-    new_libc_filename = f"libc-{libc_architecture}-{libc_version}.so"
-    new_libc_filepath = find_matching_file_and_add_to_db(
+    new_libc_filename = f"libc-{libc_architecture}-{libc_version}-{libc_patch}.so"
+    new_libc_filepath = _find_matching_file_and_add_to_db(
         libc_search_paths, dest_dirpath, new_libc_filename
     )
 
@@ -87,15 +83,20 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
             "usr/lib/debug/lib/x86_64-linux-gnu/libc-*.so",
         )
     ]
-    new_libc_symbols_filename = f"libc-{libc_architecture}-{libc_version}.so.debug"
-    new_libc_symbols_filepath = find_matching_file_and_add_to_db(
+    new_libc_symbols_filename = (
+        f"libc-{libc_architecture}-{libc_version}-{libc_patch}.so.debug"
+    )
+    new_libc_symbols_filepath = _find_matching_file_and_add_to_db(
         libc_symbols_search_paths, dest_dirpath, new_libc_symbols_filename
     )
 
     if not any((new_ld_filepath, new_libc_filepath, new_libc_symbols_filepath)):
-        utils.abort(
-            "Aborting: the package seems to not contain a dynamic loader, libc or debug symbols."
+        print(
+            utils.make_warning(
+                f"Skipping: the package seems to not contain a dynamic loader, libc or debug symbols."
+            )
         )
+        return
 
     # keep the package, it may be useful later
     shutil.copy2(package_filepath, dest_dirpath)
@@ -103,8 +104,8 @@ def add(package_filepath, dest_dirpath=utils.get_libcs_dirpath()):
     print(utils.make_bright("</add>"))
 
 
-def find_matching_file_and_add_to_db(search_paths, dest_dirpath, new_filename):
-    filepath = find_matching_file(search_paths)
+def _find_matching_file_and_add_to_db(search_paths, dest_dirpath, new_filename):
+    filepath = _find_matching_file(search_paths)
     if not filepath:
         return None
 
@@ -117,7 +118,7 @@ def find_matching_file_and_add_to_db(search_paths, dest_dirpath, new_filename):
     return new_filepath
 
 
-def find_matching_file(paths):
+def _find_matching_file(paths):
     for path in paths:
         filepaths = glob.glob(path)
         if filepaths:
@@ -139,15 +140,62 @@ def bootstrap(ubuntu_only):
     ):
         utils.abort("Aborted by user.")
 
-    add_ubuntu_libcs()
+    _add_ubuntu_libcs()
     if not ubuntu_only:
-        add_debian_libcs()
-        add_arch_linux_libcs()
+        _add_debian_libcs()
+        _add_arch_linux_libcs()
 
     print(utils.make_bright("</bootstrap>"))
 
 
-def add_ubuntu_libcs():
+def _already_in_db(package_url):
+    match = utils.match(package_url)
+    if not match:
+        return False
+
+    with sqlite3.connect(utils.get_libcs_db_filepath()) as conn:
+        try:
+            return next(
+                conn.execute(
+                    "SELECT * FROM libcs where architecture=? and version=? and patch=?",
+                    (
+                        match.group("architecture"),
+                        match.group("version"),
+                        match.group("patch"),
+                    ),
+                )
+            )
+        except sqlite3.OperationalError:
+            # first time bootstrap, db is not created yet
+            return False
+        except StopIteration:
+            return False
+
+
+def _add_ubuntu_libcs():
+    def _find_packages_urls(release, architecture, package):
+        url = f"https://launchpad.net/ubuntu/{release}/{architecture}/{package}"
+        packages_versions = set(
+            utils.findall(fr'"/ubuntu/.+?/{package}/(?P<version>.+?)(?:\.\d+)?"', url)
+        )
+        if not packages_versions:
+            print(utils.make_warning(f"Problems: {utils.make_bright(url)}"))
+            return []
+        n = 3
+        most_recent_packages_versions = sorted(packages_versions, reverse=True)[:n]
+
+        packages_urls = [
+            utils.search(
+                r"['\"](?P<url>https?.*?libc6.*?.deb)['\"]",
+                f"https://launchpad.net/ubuntu/{release}/{architecture}/{package}/{package_filename}",
+            ).group("url")
+            for package_filename in most_recent_packages_versions
+        ]
+        if not packages_urls:
+            print(utils.make_warning(f"Problems: {utils.make_bright(url)}"))
+            return []
+        return packages_urls
+
     distro_dirpath = os.path.join(utils.get_libcs_dirpath(), "ubuntu")
     os.makedirs(distro_dirpath, exist_ok=True)
     for release in ("trusty", "xenial", "artful", "bionic"):
@@ -155,75 +203,75 @@ def add_ubuntu_libcs():
         os.makedirs(release_dirpath, exist_ok=True)
         for architecture in ("i386", "amd64"):
             for package in ("libc6", "libc6-dbg"):
-                print()
-                url = f"https://packages.ubuntu.com/{release}/{architecture}/{package}/download"
-                package_url = extract_package_url_ubuntu_debian(url)
-                if not package_url:
-                    continue
-                with tempfile.TemporaryDirectory() as tmp_dirpath:
-                    package_filepath = utils.download(tmp_dirpath, package_url)
-                    add(package_filepath, dest_dirpath=release_dirpath)
+                for package_url in _find_packages_urls(release, architecture, package):
+                    if _already_in_db(package_url):
+                        print(f"Skipping: {utils.make_bright(package_url)}")
+                        continue
+                    with tempfile.TemporaryDirectory() as tmp_dirpath:
+                        print(f"Downloading: {utils.make_bright(package_url)}")
+                        package_filepath = utils.retrieve(package_url, tmp_dirpath)
+                        add(package_filepath, dest_dirpath=release_dirpath)
 
 
-def add_debian_libcs():
+def _add_debian_libcs():
+    def _find_packages_urls(release, architecture, package):
+        url = f"https://packages.debian.org/{release}/{architecture}/{package}/download"
+        try:
+            package_url = utils.search(
+                r"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", url
+            ).group("url")
+        except AttributeError:
+            print(utils.make_warning(f"Problems: {utils.make_bright(url)}"))
+            return []
+        else:
+            return [package_url]
+
     distro_dirpath = os.path.join(utils.get_libcs_dirpath(), "debian")
     os.makedirs(distro_dirpath, exist_ok=True)
-    for release in ("squeeze", "wheezy", "jessie", "stretch"):
+    for release in ("squeeze", "wheezy", "jessie", "stretch", "buster"):
         release_dirpath = os.path.join(distro_dirpath, release)
         os.makedirs(release_dirpath, exist_ok=True)
         for architecture in ("i386", "amd64"):
             for package in ("libc6", "libc6-dbg"):
-                print()
-                url = f"https://packages.debian.org/{release}/{architecture}/{package}/download"
-                package_url = extract_package_url_ubuntu_debian(url)
-                if not package_url:
-                    continue
-                with tempfile.TemporaryDirectory() as tmp_dirpath:
-                    package_filepath = utils.download(tmp_dirpath, package_url)
-                    add(package_filepath, dest_dirpath=release_dirpath)
+                for package_url in _find_packages_urls(release, architecture, package):
+                    if _already_in_db(package_url):
+                        print(f"Skipping: {utils.make_bright(package_url)}")
+                        continue
+                    with tempfile.TemporaryDirectory() as tmp_dirpath:
+                        print(f"Downloading: {utils.make_bright(package_url)}")
+                        package_filepath = utils.retrieve(package_url, tmp_dirpath)
+                        add(package_filepath, dest_dirpath=release_dirpath)
 
 
-def add_arch_linux_libcs():
+def _add_arch_linux_libcs():
+    def _find_packages_urls(architecture):
+        url = "https://archive.archlinux.org/packages/g/glibc/"
+        try:
+            packages_filenames = utils.findall(
+                fr"['\"](?P<filename>glibc-(?:.*?)-{architecture}\.pkg\.tar\.[gx]z)['\"]",
+                url,
+            )
+        except AttributeError:
+            print(utils.make_warning(f"Problems: {utils.make_bright(url)}"))
+            return []
+        else:
+            packages_urls = [
+                os.path.join(url, package_filename)
+                for package_filename in packages_filenames
+            ]
+            return packages_urls
+
     distro_dirpath = os.path.join(utils.get_libcs_dirpath(), "arch")
     os.makedirs(distro_dirpath, exist_ok=True)
     for architecture in ("i686", "x86_64"):
-        url = "https://archive.archlinux.org/packages/g/glibc/"
-        for package_url in extract_package_urls_arch(url, architecture):
-            print()
+        for package_url in _find_packages_urls(architecture):
+            if _already_in_db(package_url):
+                print(f"Skipping: {utils.make_bright(package_url)}")
+                continue
             with tempfile.TemporaryDirectory() as tmp_dirpath:
-                package_filepath = utils.download(tmp_dirpath, package_url)
+                print(f"Downloading: {utils.make_bright(package_url)}")
+                package_filepath = utils.retrieve(package_url, tmp_dirpath)
                 add(package_filepath, dest_dirpath=distro_dirpath)
-
-
-def extract_package_url_ubuntu_debian(url):
-    with urllib.request.urlopen(url) as u:
-        try:
-            package_url = (
-                re.search(br"['\"](?P<url>https?.*?libc6.*?.deb)['\"]", u.read())
-                .group("url")
-                .decode("ascii")
-            )
-            return package_url
-        except AttributeError:
-            print(utils.make_warning(f"Problems on: {url}"))
-            return None
-
-
-def extract_package_urls_arch(url, architecture):
-    with urllib.request.urlopen(url) as u:
-        try:
-            package_filenames = re.findall(
-                fr"['\"](?P<package_filename>glibc-(?:.*?)-{architecture}\.pkg\.tar\.[gx]z)['\"]",
-                u.read().decode("ascii"),
-            )
-            package_urls = [
-                os.path.join(url, package_filename)
-                for package_filename in package_filenames
-            ]
-            return package_urls
-        except AttributeError:
-            print(utils.make_warning(f"Problems on: {url}"))
-            return []
 
 
 # ############################################################################ #
@@ -238,7 +286,13 @@ def extract(package_filepath):
     shutil.copy2(package_filepath, tmp_dirpath)
     # extract the package
     subprocess.run(
-        f"ar x {shlex.quote(package_filename)}", cwd=tmp_dirpath, check=True, shell=True
+        f"tar xf {shlex.quote(package_filename)}"
+        if package_filepath.endswith("tar.xz")
+        else f"ar x {shlex.quote(package_filename)}",
+        cwd=tmp_dirpath,
+        check=True,
+        shell=True,
+        stderr=subprocess.PIPE,
     )
     # extract data.tar.?z if it exists
     subprocess.run(
@@ -273,7 +327,7 @@ def rebuild():
             )
             if match:
                 relpath = os.path.relpath(filepath, utils.get_libcs_dirpath())
-                print(f"Processing: {utils.make_bright(f'.../{relpath}')}")
+                print(f"Importing: {utils.make_bright(relpath)}")
                 conn.execute(
                     "INSERT INTO libcs VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (
@@ -283,7 +337,7 @@ def rebuild():
                         match.group("release"),
                         match.group("version"),
                         match.group("patch"),
-                        utils.extract_buildID_from_file(filepath),
+                        utils.extract_buildID(filepath),
                     ),
                 )
 
@@ -318,12 +372,14 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
     if args.action == "add":
         add(args.package.name)
         rebuild()
     elif args.action == "bootstrap":
-        bootstrap(args.ubuntu_only)
+        try:
+            bootstrap(args.ubuntu_only)
+        except KeyboardInterrupt:
+            pass
         rebuild()
     elif args.action == "extract":
         extract(args.package.name)
