@@ -98,7 +98,7 @@ def match(package_filepath):
     # - libc6_2.24-11+deb9u3_amd64.deb
     # - glibc-2.23-3-x86_64.pkg.tar.xz
     for pattern in (
-        r"libc6(?:-dbg)?_(?P<version>\d.\d+)-(?P<patch>\d+ubuntu\d+)_(?P<architecture>i386|amd64|armel|armhf|arm64).deb",
+        r"libc6(?:-dbg)?_(?P<version>\d.\d+)-(?P<patch>\d+ubuntu.+?)_(?P<architecture>i386|amd64|armel|armhf|arm64).deb",
         r"libc6(?:-dbg)?_(?P<version>\d.\d+)-(?P<patch>\d+\+deb.+?)_(?P<architecture>i386|amd64|armel|armhf|arm64).deb",
         r"glibc-(?P<version>\d.\d+)-(?P<patch>\d+)-(?P<architecture>i686|x86_64).pkg.tar.xz",
     ):
