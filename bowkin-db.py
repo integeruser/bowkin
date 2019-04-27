@@ -143,7 +143,7 @@ def bootstrap(ubuntu_only):
     _add_ubuntu_libcs()
     if not ubuntu_only:
         _add_debian_libcs()
-    _add_arch_linux_libcs()
+        _add_arch_linux_libcs()
 
     print(utils.make_bright("</bootstrap>"))
 
@@ -286,7 +286,9 @@ def extract(package_filepath):
     shutil.copy2(package_filepath, tmp_dirpath)
     # extract the package
     subprocess.run(
-        f"ar x {shlex.quote(package_filename)}",
+        f"tar xf {shlex.quote(package_filename)}"
+        if package_filepath.endswith("tar.xz")
+        else f"ar x {shlex.quote(package_filename)}",
         cwd=tmp_dirpath,
         check=True,
         shell=True,
