@@ -29,10 +29,8 @@ def query_yes_no(question):
     return input("{} (y/[N]) ".format(question)).lower() in ("y", "yes")
 
 
-def extract_buildID_from_file(libc_filepath):
-    out = subprocess.check_output(
-        shlex.split("file {}".format(shlex.quote(libc_filepath)))
-    )
+def extract_buildID(filepath):
+    out = subprocess.check_output(shlex.split("file {}".format(shlex.quote(filepath))))
     try:
         buildID = (
             re.search(br"BuildID\[sha1\]\=(?P<buildID>[a-z0-9]+)", out)
@@ -98,10 +96,12 @@ def match(package_filepath):
     # Examples of supported packages:
     # - libc6_2.23-0ubuntu10_amd64.deb
     # - libc6_2.24-11+deb9u3_amd64.deb
+    # - libc6_2.28-8_i386.deb
     # - glibc-2.23-3-x86_64.pkg.tar.xz
     for pattern in (
         r"libc6(?:-dbg)?_(?P<version>\d.\d+)-(?P<patch>\d+ubuntu.+?)_(?P<architecture>i386|amd64|armel|armhf|arm64).deb",
         r"libc6(?:-dbg)?_(?P<version>\d.\d+)-(?P<patch>\d+\+deb.+?)_(?P<architecture>i386|amd64|armel|armhf|arm64).deb",
+        r"libc6(?:-dbg)?_(?P<version>\d.\d+)-(?P<patch>\d+)_(?P<architecture>i386|amd64|armel|armhf|arm64).deb",
         r"glibc-(?P<version>\d.\d+)-(?P<patch>\d+)-(?P<architecture>i686|x86_64).pkg.tar.xz",
     ):
         match = re.match(pattern, package_filename)
@@ -109,3 +109,11 @@ def match(package_filepath):
             return match
     else:
         return None
+
+
+def findall(pattern, url):
+    return re.findall(pattern, retrieve(url).decode("latin-1"))
+
+
+def search(pattern, url):
+    return re.search(pattern, retrieve(url).decode("latin-1"))
