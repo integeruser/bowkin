@@ -26,7 +26,7 @@ def identify(libc_filepath):
             dict(libc)
             for libc in conn.execute(
                 "SELECT * FROM libcs where buildID=?",
-                (utils.extract_buildID_from_file(libc_filepath),),
+                (utils.extract_buildID(libc_filepath),),
             )
         ]
 
