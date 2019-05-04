@@ -14,6 +14,24 @@ import elftools.elf.elffile
 import utils
 
 
+def dump(libc_filepath, symbols):
+    print(utils.make_bright("<dump>"))
+
+    with open(libc_filepath, "rb") as f:
+        elf = elftools.elf.elffile.ELFFile(f)
+        dynsym_section = elf.get_section_by_name(".dynsym")
+        for symbol in symbols:
+            try:
+                libc_symbol = dynsym_section.get_symbol_by_name(symbol)[0]
+                libc_offset = libc_symbol.entry.st_value & 0xFFF
+            except TypeError:
+                pass
+            else:
+                print(f"{symbol}={hex(libc_offset)}")
+
+    print(utils.make_bright("</dump>"))
+
+
 def find(symbols):
     print(utils.make_bright("<find>"))
 
@@ -173,6 +191,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="action")
 
+    dump_parser = subparsers.add_parser(
+        "dump", help="Dump symbols offsets of a given libc"
+    )
+    dump_parser.add_argument("libc", type=argparse.FileType())
+    dump_parser.add_argument("symbol", nargs="+")
+
     find_parser = subparsers.add_parser(
         "find", help="Find which libcs in the local library satisfy symbol=address"
     )
@@ -194,7 +218,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.action == "find":
+    if args.action == "dump":
+        dump(args.libc.name, args.symbol)
+    elif args.action == "find":
         find(args.symbols)
     elif args.action == "identify":
         identify(args.libc.name)
