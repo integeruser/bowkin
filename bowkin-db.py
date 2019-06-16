@@ -352,23 +352,23 @@ if __name__ == "__main__":
 
     add_parser = subparsers.add_parser(
         "add",
-        help="add to the libs folder the libc and the loader from the specified packet",
+        help="Add the libc and the loader contained in a glibc package to the local library",
     )
     add_parser.add_argument("package", type=argparse.FileType())
 
     bootstrap_parser = subparsers.add_parser(
         "bootstrap",
-        help="will download some libcs used in ubuntu, debian and arch linux",
+        help="Download a bunch of libcs from the Ubuntu, Debian and Arch Linux archives",
     )
     bootstrap_parser.add_argument("--ubuntu-only", action="store_true")
 
     extract_parser = subparsers.add_parser(
-        "extract", help="Extract a package into a temporary directory"
+        "extract", help="Extract a glibc package into a temporary directory"
     )
     extract_parser.add_argument("package", type=argparse.FileType())
 
     rebuild_parser = subparsers.add_parser(
-        "rebuild", help="will rebuild the database using the added libcs"
+        "rebuild", help="Rebuild the libcs database by rescanning the local library"
     )
 
     args = parser.parse_args()

@@ -1,9 +1,9 @@
 # bowkin
-`bowkin` (or `b💋wkin`) is a tool for patching binaries to use **specific versions of glibc** (the GNU C standard library).
+`bowkin` is a tool for patching ELF binaries to use **specific versions of glibc** (the GNU C standard library).
 
 
 ## Requisites
-[PatchELF](https://nixos.org/patchelf.html), and some Python 3 packages:
+The [`file`](https://en.wikipedia.org/wiki/File_(command)) command (may not be installed by default in some distro), [PatchELF](https://nixos.org/patchelf.html), and a couple of Python 3 packages:
 ```
 $ pip3 install -r requirements.txt
 ```
@@ -12,7 +12,6 @@ $ pip3 install -r requirements.txt
 1. Clone this repository: `git clone https://github.com/integeruser/bowkin.git ~/.bowkin`
 2. (Optional) For convenience, add `bowkin.py` and `bowkin-db.py` to the `PATH` (e.g. `ln -s ~/.bowkin/bowkin.py /usr/local/bin/bowkin` and `ln -s ~/.bowkin/bowkin-db.py /usr/local/bin/bowkin-db`)
 3. Download a bunch of libcs: `bowkin-db bootstrap --ubuntu-only`
-4. Rebuild the database: `bowkin-db rebuild`
 
 
 ## Usage
@@ -56,7 +55,7 @@ $ bowkin identify /example/libc.so.6
     "architecture": "amd64",
     "buildID": "b5381a457906d279073822a5ceb24c4bfef94ddb",
     "distro": "ubuntu",
-    "realpath": "/Users/integeruser/Google Drive/libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so",
+    "realpath": "/opt/libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so",
     "release": "xenial",
     "relpath": "ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so",
     "version": "2.23-0ubuntu10"
@@ -64,16 +63,16 @@ $ bowkin identify /example/libc.so.6
 ```
 2. Then, patch the binary to use the identified library:
 ```bash
-$ bowkin patch /example/challenge /Users/integeruser/Google\ Drive/libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so
+$ bowkin patch /example/challenge /opt/libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so
 Copy:
-- /Users/integeruser/Google Drive/libcs/ubuntu/xenial/ld-amd64-2.23-0ubuntu10.so
-- /Users/integeruser/Google Drive/libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so
+- /opt/libcs/ubuntu/xenial/ld-amd64-2.23-0ubuntu10.so
+- /opt/libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so
 to:
 - /example/libs/
 ? (y/[N]) y
 
 Copy:
-- /Users/integeruser/Google Drive/libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so.debug
+- /opt/libcs/ubuntu/xenial/libc-amd64-2.23-0ubuntu10.so.debug
 to:
 - /example/libs/libc-2.23.so (this particular name is required by GDB to add debug symbols automatically)
 ? (y/[N]) y
@@ -85,7 +84,7 @@ to:
 and patch the latter? (y/[N]) y
 warning: working around a Linux kernel bug by creating a hole of 2093056 bytes in ‘/example/challenge-2.23-0ubuntu10’
 ```
-Annnnd, that's it! `bowkin` created the patched binary `challenge-2.23-0ubuntu10` and copied the necessary files (the libc to use, its dynamic loader, the debug symbols) to the same directory of the binary:
+That's it! `bowkin` created the patched binary `challenge-2.23-0ubuntu10` and copied the necessary files (the libc to use, its dynamic loader, the debug symbols) into the same directory of the binary:
 ```bash
 $ ls
 challenge  challenge-2.23-0ubuntu10  libc.so.6  libs
@@ -174,7 +173,7 @@ Child exited with status 0
 ```
 
 ## Usage (cont.)
-You can add any `glibc` packages to the database with `bowkin-db add <package>`:
+You can add glibc packages to the database with `bowkin-db add <package>`:
 ```bash
 $ file ./usr/lib/libc-2.22.so
 ./usr/lib/libc-2.22.so: ELF 32-bit LSB pie executable Intel 80386, version 1 (GNU/Linux), dynamically linked, interpreter /usr/lib/ld-linux.so.2, BuildID[sha1]=faef9af5a88432766d76d7da2cf961c75b6e0e0b, for GNU/Linux 2.6.32, not stripped

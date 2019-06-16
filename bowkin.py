@@ -13,7 +13,51 @@ import elftools.elf.elffile
 
 import utils
 
-# ############################################################################ #
+
+def dump(libc_filepath, symbols):
+    print(utils.make_bright("<dump>"))
+
+    with open(libc_filepath, "rb") as f:
+        elf = elftools.elf.elffile.ELFFile(f)
+        dynsym_section = elf.get_section_by_name(".dynsym")
+        for symbol in symbols:
+            try:
+                libc_symbol = dynsym_section.get_symbol_by_name(symbol)[0]
+                libc_offset = libc_symbol.entry.st_value & 0xFFF
+            except TypeError:
+                pass
+            else:
+                print(f"{symbol}={hex(libc_offset)}")
+
+    print(utils.make_bright("</dump>"))
+
+
+def find(symbols):
+    print(utils.make_bright("<find>"))
+
+    matches = []
+    with sqlite3.connect(utils.get_libcs_db_filepath()) as conn:
+        conn.row_factory = sqlite3.Row
+        for libc in conn.execute("SELECT * FROM libcs"):
+            libc_filepath = os.path.join(utils.get_libcs_dirpath(), libc["relpath"])
+            with open(libc_filepath, "rb") as f:
+                elf = elftools.elf.elffile.ELFFile(f)
+                dynsym_section = elf.get_section_by_name(".dynsym")
+                for symbol, address in symbols:
+                    offset = address & 0xFFF
+                    try:
+                        libc_symbol = dynsym_section.get_symbol_by_name(symbol)[0]
+                        libc_offset = libc_symbol.entry.st_value & 0xFFF
+                        if libc_offset != offset:
+                            break
+                    except (IndexError, TypeError):
+                        break
+                else:
+                    utils.dump(dict(libc))
+                    matches.append(dict(libc))
+
+    print(utils.make_bright("</find>"))
+    return matches
 
 
 def identify(libc_filepath):
@@ -37,42 +81,6 @@ def identify(libc_filepath):
     return matches
 
 
-# ############################################################################ #
-
-
-def find(symbols):
-    print(utils.make_bright("<find>"))
-
-    matches = []
-    with sqlite3.connect(utils.get_libcs_db_filepath()) as conn:
-        conn.row_factory = sqlite3.Row
-        for libc in conn.execute("SELECT * FROM libcs"):
-            libc_filepath = os.path.join(utils.get_libcs_dirpath(), libc["relpath"])
-            with open(libc_filepath, "rb") as f:
-                elf = elftools.elf.elffile.ELFFile(f)
-                dynsym_section = elf.get_section_by_name(".dynsym")
-                for symbol, address in symbols:
-                    offset = int(address, 16) & 0b111111111111
-                    try:
-                        libc_symbol = dynsym_section.get_symbol_by_name(symbol)[0]
-                        libc_offset = libc_symbol.entry.st_value & 0b111111111111
-                        if libc_offset != offset:
-                            break
-                    except (IndexError, TypeError):
-                        break
-                else:
-                    matches.append(dict(libc))
-
-    for libc in matches:
-        utils.dump(libc)
-
-    print(utils.make_bright("</find>"))
-    return matches
-
-
-# ############################################################################ #
-
-
 def patch(binary_filepath, supplied_libc_filepath):
     print(utils.make_bright("<patch>"))
 
@@ -81,7 +89,7 @@ def patch(binary_filepath, supplied_libc_filepath):
     # identify the supplied libc
     matches = identify(supplied_libc_filepath)
     if not matches:
-        utils.abort("The supplied libc is not in the database.")
+        utils.abort("The supplied libc is not in the local library.")
     # TODO pick the first for now
     libc = matches[0]
 
@@ -173,36 +181,46 @@ def patch(binary_filepath, supplied_libc_filepath):
     print(utils.make_bright("</patch>"))
 
 
-# ############################################################################ #
-
 if __name__ == "__main__":
+
+    def _parse_symbol_address_type(text):
+        symbol, address = text.split("=")
+        address = int(address, 16)
+        return (symbol, address)
+
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="action")
 
+    dump_parser = subparsers.add_parser(
+        "dump", help="Dump symbols offsets of a given libc"
+    )
+    dump_parser.add_argument("libc", type=argparse.FileType())
+    dump_parser.add_argument("symbol", nargs="+")
+
     find_parser = subparsers.add_parser(
-        "find", help="Find libcs that satisfy symbol=address"
+        "find", help="Find which libcs in the local library satisfy symbol=address"
     )
     find_parser.add_argument(
-        "symbols",
-        type=lambda text: text.split("="),
-        nargs="+",
-        metavar="symbol=address",
+        "symbols", type=_parse_symbol_address_type, nargs="+", metavar="symbol=address"
     )
 
     identify_parser = subparsers.add_parser(
-        "identify", help="Print info about the supplied libc"
+        "identify",
+        help="Identify an unknown libc by searching the local library for libcs with the same buildID",
     )
     identify_parser.add_argument("libc", type=argparse.FileType())
 
     patch_parser = subparsers.add_parser(
-        "patch", help="Patch the supplied binary to use a specific libc"
+        "patch", help="Patch an ELF binary to use a specific libc"
     )
     patch_parser.add_argument("binary", type=argparse.FileType())
     patch_parser.add_argument("libc", type=argparse.FileType())
 
     args = parser.parse_args()
 
-    if args.action == "find":
+    if args.action == "dump":
+        dump(args.libc.name, args.symbol)
+    elif args.action == "find":
         find(args.symbols)
     elif args.action == "identify":
         identify(args.libc.name)
